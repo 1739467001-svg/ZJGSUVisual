@@ -22,6 +22,7 @@ import { nextBookingId, nextTicketId } from '../lib/ids'
 import { nowHHMM, endPlus } from '../lib/time'
 import { roomLabel } from '../lib/format'
 import { DEMO_SCENARIOS } from '../data/demoScenarios'
+import { simClock } from '../sim/clock'
 
 export interface CampusState {
   world: WorldData
@@ -59,6 +60,8 @@ export interface CampusState {
   setDrill: (d: CampusState['drill']) => void
   setHeatMode: (m: CampusState['heatMode']) => void
   setClockRate: (r: CampusState['clock']['rate']) => void
+  setVirtualTs: (iso: string) => void
+  setCameraShot: (shot?: Shot) => void
   selectBuilding: (id?: string) => void
   selectRoom: (id?: string) => void
 
@@ -104,7 +107,16 @@ export const useCampusStore = create<CampusState>((set, get) => ({
   setActivePanel: (p) => set({ activePanel: p }),
   setDrill: (d) => set({ drill: d }),
   setHeatMode: (m) => set({ heatMode: m }),
-  setClockRate: (r) => set((s) => ({ clock: { ...s.clock, rate: r, running: r > 0 } })),
+  setClockRate: (r) => {
+    simClock.setRate(r)
+    set((s) => ({ clock: { ...s.clock, rate: r, running: r > 0 } }))
+  },
+  // 时间轴滑杆直接设时刻；virtualTs 平时由 ClockBridge 以 ~1Hz 从 simClock 回同步
+  setVirtualTs: (iso) => {
+    simClock.setTime(new Date(iso))
+    set((s) => ({ clock: { ...s.clock, virtualTs: iso } }))
+  },
+  setCameraShot: (shot) => set({ cameraShot: shot }),
   selectBuilding: (id) => set({ selectedBuildingId: id }),
   selectRoom: (id) => set({ selectedRoomId: id }),
 
@@ -159,6 +171,8 @@ export const useCampusStore = create<CampusState>((set, get) => ({
     }
     set((cur) => ({
       bookings: [...cur.bookings, booking],
+      // 任务闭环：清掉候选高亮，该楼光带回落为 busy（沙盘可见状态联动）
+      highlightedRoomIds: [],
       rooms: cur.rooms.map((r) => (r.id === roomId ? { ...r, status: 'busy' as const } : r)),
       messages: [
         ...cur.messages,

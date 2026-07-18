@@ -17,6 +17,8 @@ export function OverviewPanel() {
   const world = useCampusStore((s) => s.world)
   const rooms = useCampusStore((s) => s.rooms)
   const devices = useCampusStore((s) => s.devices)
+  const selectBuilding = useCampusStore((s) => s.selectBuilding)
+  const setCameraShot = useCampusStore((s) => s.setCameraShot)
 
   const kindCounts = world.buildings.reduce<Partial<Record<BuildingKind, number>>>((acc, b) => {
     acc[b.kind] = (acc[b.kind] ?? 0) + 1
@@ -63,7 +65,15 @@ export function OverviewPanel() {
         </p>
         <div className="flex flex-col gap-2">
           {landmarks.map((b) => (
-            <div key={b.id} className="rounded-lg border border-slate-200 bg-white p-3">
+            <button
+              key={b.id}
+              type="button"
+              onClick={() => {
+                selectBuilding(b.id)
+                setCameraShot({ kind: 'push', buildingId: b.id, ms: 1400 })
+              }}
+              className="rounded-lg border border-slate-200 bg-white p-3 text-left transition-colors hover:border-brand/50"
+            >
               <div className="flex items-center justify-between">
                 <span className="text-[13px] font-semibold text-slate-900">{b.name}</span>
                 <span className="rounded bg-brand/10 px-1.5 py-0.5 text-[10px] text-brand-dark">
@@ -81,7 +91,7 @@ export function OverviewPanel() {
               </p>
               {b.honor && <p className="mt-0.5 text-[11px] text-gold">{b.honor}</p>}
               {b.address && <p className="mt-0.5 text-[11px] text-slate-400">{b.address}</p>}
-            </div>
+            </button>
           ))}
         </div>
       </div>

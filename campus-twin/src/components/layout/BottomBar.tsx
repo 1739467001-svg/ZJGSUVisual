@@ -9,6 +9,31 @@ const RATES: { rate: CampusState['clock']['rate']; label: string }[] = [
   { rate: 60, label: '60x' },
 ]
 
+function TimeSlider() {
+  const virtualTs = useCampusStore((s) => s.clock.virtualTs)
+  const setVirtualTs = useCampusStore((s) => s.setVirtualTs)
+  const mins = Number(virtualTs.slice(11, 13)) * 60 + Number(virtualTs.slice(14, 16))
+  return (
+    <span className="flex items-center gap-1.5">
+      <input
+        type="range"
+        min={0}
+        max={1439}
+        value={mins}
+        onChange={(e) => {
+          const v = Number(e.target.value)
+          const hh = String(Math.floor(v / 60)).padStart(2, '0')
+          const mm = String(v % 60).padStart(2, '0')
+          setVirtualTs(`${virtualTs.slice(0, 10)}T${hh}:${mm}:00`)
+        }}
+        className="h-1 w-36 cursor-pointer accent-teal-600"
+        title="拖动设定虚拟时刻"
+      />
+      <span className="text-[11px] tabular-nums text-slate-600">{virtualTs.slice(11, 16)}</span>
+    </span>
+  )
+}
+
 export function BottomBar() {
   const rate = useCampusStore((s) => s.clock.rate)
   const running = useCampusStore((s) => s.running)
@@ -52,9 +77,10 @@ export function BottomBar() {
         ))}
       </div>
 
-      {/* 时间轴：变速已接入 store，时钟驱动沙盘在阶段 5 接入 */}
+      {/* 时间轴：滑杆设时刻（验证 24h 昼夜）+ 变速 */}
       <div className="flex items-center gap-2">
         <span className="text-[11px] text-slate-400">时间轴</span>
+        <TimeSlider />
         <div className="flex gap-1">
           <button
             type="button"
