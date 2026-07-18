@@ -25,7 +25,11 @@ export function ClockBridge() {
     liveSky.current = skyStateAt(simClock.now())
 
     const w = window as unknown as Record<string, unknown>
+    // EffectComposer 多趟渲染会让 info 每趟重置：改手动累计，读的是上一帧全帧值
+    if (state.gl.info.autoReset) state.gl.info.autoReset = false
     w.__DRAWCALLS__ = state.gl.info.render.calls
+    state.gl.info.reset()
+    w.__STORE__ = useCampusStore
     frames.current += 1
     if (frames.current === 45) w.__SCENE_READY__ = true
 

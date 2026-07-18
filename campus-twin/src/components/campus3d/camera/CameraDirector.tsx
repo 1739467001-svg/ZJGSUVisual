@@ -4,30 +4,15 @@ import { useFrame, useThree } from '@react-three/fiber'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Shot } from '../../../types'
 import { buildingById } from '../../../data/world'
+import { rooms } from '../../../data/seedRooms'
+import { roomWorldPos } from '../../../lib/roomPos'
+import { buildRouteCurve } from '../../../lib/routeCurve'
 import { useCampusStore } from '../../../store/campusStore'
 
 const POS = new THREE.Vector3()
 const TARGET = new THREE.Vector3()
-
-function desiredShot(shot: Shot | undefined, t: number, pos: THREE.Vector3, target: THREE.Vector3): void {
-  if (shot?.kind === 'push') {
-    const b = buildingById(shot.buildingId)
-    if (b) {
-      const h = b.floors * b.floorHeight
-      target.set(b.position[0], h * 0.5, b.position[1])
-      pos.set(b.position[0] + 75, h * 0.5 + 55, b.position[1] + 75) // 楼前约 120m
-      return
-    }
-  }
-  if (shot?.kind === 'topdown') {
-    target.set(0, 0, 0)
-    pos.set(1, 1100, 1)
-    return
-  }
-  // overview：780m 东南 45° 俯视，呼吸浮动 ±6m/8s
-  target.set(0, 0, 0)
-  pos.set(452, 447 + Math.sin((t * Math.PI * 2) / 8) * 6, 452)
-}
+const PT = new THREE.Vector3()
+const TAN = new THREE.Vector3()
 
 // 规格 §9.6：useFrame 中 damp 插值 position/target；用户拖拽打断，1.2s 后柔和回导演位
 export function CameraDirector() {
@@ -35,9 +20,16 @@ export function CameraDirector() {
   const controls = useThree((s) => s.controls) as unknown as OrbitControlsImpl | null
   const shot = useCampusStore((s) => s.cameraShot)
   const selectBuilding = useCampusStore((s) => s.selectBuilding)
-  const setCameraShot = useCampusStore((s) => s.setCameraShot)
+  const setDrill = useCampusStore((s) => s.setDrill)
   const dragging = useRef(false)
   const resumeAt = useRef(0)
+  const followStart = useRef<number | null>(null)
+  const followCurve = useRef<THREE.CurvePath<THREE.Vector3> | null>(null)
+
+  useEffect(() => {
+    followStart.current = null
+    followCurve.current = shot?.kind === 'follow' ? buildRouteCurve(shot.route.waypoints) : null
+  }, [shot])
 
   useEffect(() => {
     if (!controls) return
@@ -59,12 +51,12 @@ export function CameraDirector() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         selectBuilding(undefined)
-        setCameraShot({ kind: 'overview' })
+        setDrill({ level: 0 })
       }
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [selectBuilding, setCameraShot])
+  }, [selectBuilding, setDrill])
 
   useFrame((state, delta) => {
     if (!controls) return
@@ -73,7 +65,7 @@ export function CameraDirector() {
       return
     }
     if (state.clock.elapsedTime < resumeAt.current) return
-    desiredShot(shot, state.clock.elapsedTime, POS, TARGET)
+    desiredShot(shot, state.clock.elapsedTime, followStart, followCurve.current)
     const lambda = 2.2
     camera.position.x = THREE.MathUtils.damp(camera.position.x, POS.x, lambda, delta)
     camera.position.y = THREE.MathUtils.damp(camera.position.y, POS.y, lambda, delta)
@@ -85,4 +77,67 @@ export function CameraDirector() {
   })
 
   return null
+}
+
+function desiredShot(
+  shot: Shot | undefined,
+  t: number,
+  followStart: React.MutableRefObject<number | null>,
+  curve: THREE.CurvePath<THREE.Vector3> | null,
+): void {
+  if (shot?.kind === 'push') {
+    const b = buildingById(shot.buildingId)
+    if (b) {
+      const h = b.floors * b.floorHeight
+      // 距离随楼宇尺度缩放：大盘楼（图书馆 150m）推到 200m+，小楼约 120m
+      const d = Math.max(140, Math.max(b.footprint[0], b.footprint[1]) * 1.5)
+      TARGET.set(b.position[0], h * 0.5, b.position[1])
+      POS.set(b.position[0] + d * 0.62, h * 0.5 + d * 0.42, b.position[1] + d * 0.62)
+      return
+    }
+  }
+  if (shot?.kind === 'orbit') {
+    const b = buildingById(shot.buildingId)
+    if (b) {
+      const h = b.floors * b.floorHeight
+      const r = Math.max(150, Math.max(b.footprint[0], b.footprint[1]) * 1.35)
+      const a = (t * Math.PI * 2) / 20 // 20s 一圈缓慢环绕
+      TARGET.set(b.position[0], h * 0.5, b.position[1])
+      POS.set(b.position[0] + Math.cos(a) * r, h * 0.5 + r * 0.55, b.position[1] + Math.sin(a) * r)
+      return
+    }
+  }
+  if (shot?.kind === 'room') {
+    const room = rooms.find((r) => r.id === shot.roomId)
+    const b = room ? buildingById(room.buildingId) : undefined
+    if (room && b) {
+      const [x, y, z] = roomWorldPos(b, room, 1.8, true)
+      TARGET.set(x, y, z)
+      POS.set(x + 26, y + 20, z + 26)
+      return
+    }
+  }
+  if (shot?.kind === 'follow' && curve) {
+    if (followStart.current === null) followStart.current = t
+    const p = THREE.MathUtils.clamp((t - followStart.current) / (shot.ms / 1000), 0, 1)
+    if (p >= 1 && shot.route.to.kind === 'building') {
+      // 跟拍结束停在终点楼 push 位
+      desiredShot({ kind: 'push', buildingId: shot.route.to.id, ms: 1200 }, t, followStart, curve)
+      return
+    }
+    curve.getPointAt(p, PT)
+    curve.getTangentAt(p, TAN)
+    TARGET.copy(PT).addScaledVector(TAN, 25)
+    POS.copy(PT).addScaledVector(TAN, -35)
+    POS.y = 28
+    return
+  }
+  if (shot?.kind === 'topdown') {
+    TARGET.set(0, 0, 0)
+    POS.set(1, 1100, 1)
+    return
+  }
+  // overview：780m 东南 45° 俯视，呼吸浮动 ±6m/8s
+  TARGET.set(0, 0, 0)
+  POS.set(452, 447 + Math.sin((t * Math.PI * 2) / 8) * 6, 452)
 }

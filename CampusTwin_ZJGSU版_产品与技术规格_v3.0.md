@@ -611,8 +611,9 @@ npm i -D tailwindcss@^3 postcss autoprefixer @types/three
 ### 阶段 4：Wow 效果 + 四级联动
 
 - ScanBeam / Drilldown 三级下钻 / PulseMarker / HeatLayer / FlowParticles / RouteFlow
-- 八个 Wow 时刻全部落地；面包屑
-- 路径引擎（pathfind 贴路网）+ 跟拍运镜
+- Wow #2–#6 落地（#1 首屏唤醒在阶段 6；#7 下课潮汐在阶段 5；#8 昼夜切换已在阶段 3 接入）；面包屑
+- PostLayer（Bloom + Vignette，quality=low 自动关闭；夜晚 Bloom 强度 +40%）
+- 跟拍运镜（路径引擎已在阶段 2 落地）
 
 验收：四条链路每条都有对应的 3D 高光；下钻/返回稳定；30 秒连续操作无卡顿。
 

@@ -12,6 +12,13 @@ beforeEach(() => {
 })
 
 describe('链路一 · 一句话预约', () => {
+  it('候选按距正门步行时间升序（Wow#2 点亮顺序）', async () => {
+    await submit('帮我找一个现在空着、有投影、能坐 8 个人的会议室')
+    const ws = state().candidates!.map((c) => c.walkMin ?? Infinity)
+    const sorted = [...ws].sort((a, b) => a - b)
+    expect(ws).toEqual(sorted)
+  })
+
   it('候选落库 → 确认预约 → 房间 busy + 回执', async () => {
     await submit('帮我找一个现在空着、有投影、能坐 8 个人的会议室')
     const s = state()

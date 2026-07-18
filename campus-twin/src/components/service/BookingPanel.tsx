@@ -7,6 +7,8 @@ export function BookingPanel() {
   const rooms = useCampusStore((s) => s.rooms)
   const bookings = useCampusStore((s) => s.bookings)
   const confirmBooking = useCampusStore((s) => s.confirmBooking)
+  const setDrill = useCampusStore((s) => s.setDrill)
+  const selectBuilding = useCampusStore((s) => s.selectBuilding)
 
   if (!candidates) {
     return (
@@ -36,7 +38,22 @@ export function BookingPanel() {
           if (!room) return null
           const booked = room.status === 'busy'
           return (
-            <div key={roomId} className="rounded-lg border border-slate-200 bg-white p-3">
+            <div
+              key={roomId}
+              role="button"
+              tabIndex={0}
+              onClick={() => {
+                selectBuilding(room.buildingId)
+                setDrill({ level: 3, buildingId: room.buildingId, floor: room.floor, roomId: room.id })
+              }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  selectBuilding(room.buildingId)
+                  setDrill({ level: 3, buildingId: room.buildingId, floor: room.floor, roomId: room.id })
+                }
+              }}
+              className="cursor-pointer rounded-lg border border-slate-200 bg-white p-3 transition-colors hover:border-brand/50"
+            >
               <div className="flex items-center justify-between">
                 <span className="text-[13px] font-semibold text-slate-900">
                   {buildingName(room.buildingId)} {room.name}
@@ -61,7 +78,10 @@ export function BookingPanel() {
                 <button
                   type="button"
                   disabled={booked}
-                  onClick={() => confirmBooking(roomId)}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    confirmBooking(roomId)
+                  }}
                   className={
                     booked
                       ? 'flex items-center gap-1 rounded-md bg-slate-100 px-2.5 py-1 text-[11px] text-slate-400'

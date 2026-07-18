@@ -37,7 +37,9 @@ function TimeSlider() {
 export function BottomBar() {
   const rate = useCampusStore((s) => s.clock.rate)
   const running = useCampusStore((s) => s.running)
+  const quality = useCampusStore((s) => s.quality)
   const setClockRate = useCampusStore((s) => s.setClockRate)
+  const setQuality = useCampusStore((s) => s.setQuality)
   const runDemoScript = useCampusStore((s) => s.runDemoScript)
 
   return (
@@ -106,6 +108,24 @@ export function BottomBar() {
               }
             >
               {label}
+            </button>
+          ))}
+        </div>
+        {/* 画质切换：低配关 Bloom、粒子减半、dpr=1（规格 §9.7） */}
+        <div className="ml-2 flex items-center gap-1 border-l border-slate-200 pl-2">
+          <span className="text-[11px] text-slate-400">画质</span>
+          {(['high', 'low'] as const).map((q) => (
+            <button
+              key={q}
+              type="button"
+              onClick={() => setQuality(q)}
+              className={
+                quality === q
+                  ? 'rounded-md bg-ink px-2 py-1 text-[11px] font-medium text-white'
+                  : 'rounded-md border border-slate-200 px-2 py-1 text-[11px] text-slate-500 hover:border-brand/50'
+              }
+            >
+              {q === 'high' ? '高' : '低'}
             </button>
           ))}
         </div>

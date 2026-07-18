@@ -45,6 +45,7 @@ export interface CampusState {
   activePanel: 'overview' | 'booking' | 'repair' | 'navigation' | 'admin'
   sceneMode: 'idle' | 'searching' | 'booking' | 'repair' | 'overview' | 'navigation'
   heatMode: 'none' | 'energy' | 'traffic' | 'occupancy'
+  sceneNonce: number // 每次指令落库 +1：Wow 效果组件以此幂等重播
   drill: { level: 0 | 1 | 2 | 3; buildingId?: string; floor?: number; roomId?: string }
   cameraShot?: Shot
   quality: 'high' | 'low'
@@ -62,6 +63,7 @@ export interface CampusState {
   setClockRate: (r: CampusState['clock']['rate']) => void
   setVirtualTs: (iso: string) => void
   setCameraShot: (shot?: Shot) => void
+  setQuality: (q: CampusState['quality']) => void
   selectBuilding: (id?: string) => void
   selectRoom: (id?: string) => void
 
@@ -95,6 +97,7 @@ export const useCampusStore = create<CampusState>((set, get) => ({
   activePanel: 'overview',
   sceneMode: 'idle',
   heatMode: 'none',
+  sceneNonce: 0,
   drill: { level: 0 },
   quality: 'high',
 
@@ -117,6 +120,7 @@ export const useCampusStore = create<CampusState>((set, get) => ({
     set((s) => ({ clock: { ...s.clock, virtualTs: iso } }))
   },
   setCameraShot: (shot) => set({ cameraShot: shot }),
+  setQuality: (q) => set({ quality: q }),
   selectBuilding: (id) => set({ selectedBuildingId: id }),
   selectRoom: (id) => set({ selectedRoomId: id }),
 
@@ -146,6 +150,11 @@ export const useCampusStore = create<CampusState>((set, get) => ({
       set((cur) => ({
         currentIntent: intent,
         ...effects,
+        // 离开态势场景时热力指标复位（除非 handler 显式给出）
+        heatMode:
+          effects.heatMode ??
+          (effects.sceneMode && effects.sceneMode !== 'overview' ? 'none' : cur.heatMode),
+        sceneNonce: cur.sceneNonce + 1,
         messages: [...cur.messages, agentMessage(result.message)],
       }))
     } finally {

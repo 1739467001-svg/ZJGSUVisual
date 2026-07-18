@@ -33,6 +33,7 @@ export interface StepDraft {
 export interface CampusEffects {
   activePanel?: 'overview' | 'booking' | 'repair' | 'navigation' | 'admin'
   sceneMode?: 'idle' | 'searching' | 'booking' | 'repair' | 'overview' | 'navigation'
+  heatMode?: 'none' | 'energy' | 'traffic' | 'occupancy'
   selectedBuildingId?: string
   selectedRoomId?: string
   highlightedRoomIds?: string[]

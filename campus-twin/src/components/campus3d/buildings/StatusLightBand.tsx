@@ -5,9 +5,11 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import type { BuildingSpec } from '../../../types'
 import { useCampusStore } from '../../../store/campusStore'
 import { BAND_COLOR, resolveBandStatus } from '../../../lib/bandStatus'
+import { liveFx } from '../liveFx'
 
-// 楼顶 0.4m 状态光带（规格 §9.3）：一圈 0.8m 宽环形带，颜色 = 该楼聚合状态，2.6s 呼吸
-export function StatusLightBand({ b, height, occupancy }: { b: BuildingSpec; height: number; occupancy: number }) {
+// 楼顶 0.4m 状态光带（规格 §9.3）：一圈 0.8m 宽环形带，2.6s 呼吸；
+// 位置由父级 wrapper 控制（剖层时贴最顶层板）；扫描命中时金光闪烁
+export function StatusLightBand({ b, occupancy, dimmed }: { b: BuildingSpec; occupancy: number; dimmed?: boolean }) {
   const matRef = useRef<THREE.MeshBasicMaterial>(null)
   const status = useCampusStore((s) => resolveBandStatus(s, b.id, occupancy))
 
@@ -27,13 +29,16 @@ export function StatusLightBand({ b, height, occupancy }: { b: BuildingSpec; hei
   useFrame(({ clock }) => {
     const mat = matRef.current
     if (!mat) return
-    const k = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin((clock.elapsedTime * Math.PI * 2) / 2.6))
-    mat.color.set(BAND_COLOR[status]).multiplyScalar(k)
+    const t = clock.elapsedTime
+    const flashing = t < (liveFx.goldUntil.get(b.id) ?? 0)
+    const breath = 0.55 + 0.45 * (0.5 + 0.5 * Math.sin((t * Math.PI * 2) / 2.6))
+    const k = breath * (dimmed ? 0.15 : 1) * (flashing ? 1.6 : 1)
+    mat.color.set(flashing ? '#f5c542' : BAND_COLOR[status]).multiplyScalar(k)
   })
 
   return (
-    <mesh geometry={ringGeo} position={[0, height + 0.2, 0]}>
-      <meshBasicMaterial ref={matRef} color={BAND_COLOR[status]} toneMapped={false} />
+    <mesh geometry={ringGeo}>
+      <meshBasicMaterial ref={matRef} toneMapped={false} />
     </mesh>
   )
 }
