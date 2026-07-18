@@ -1,18 +1,27 @@
 import { create } from 'zustand'
 import type {
+  AdminOverview,
   AgentStep,
   Booking,
   CampusSnapshot,
   Device,
   DeviceType,
   Intent,
+  NavigationRoute,
+  RepairDraft,
   Room,
+  RoomCandidate,
   Shot,
   Ticket,
   WorldData,
 } from '../types'
 import { world } from '../data/world'
 import { devices, rooms } from '../data/seedRooms'
+import { dispatchCommand, type DispatchOptions } from '../agent/dispatchIntent'
+import { nextBookingId, nextTicketId } from '../lib/ids'
+import { nowHHMM, endPlus } from '../lib/time'
+import { roomLabel } from '../lib/format'
+import { DEMO_SCENARIOS } from '../data/demoScenarios'
 
 export interface CampusState {
   world: WorldData
@@ -27,6 +36,7 @@ export interface CampusState {
   currentIntent?: Intent
   agentSteps: AgentStep[]
   messages: { role: 'user' | 'agent'; text: string; ts: number }[]
+  running: boolean // 指令执行中（输入禁用）
 
   selectedRoomId?: string
   selectedBuildingId?: string
@@ -38,6 +48,13 @@ export interface CampusState {
   cameraShot?: Shot
   quality: 'high' | 'low'
 
+  // 阶段 2 业务结果（供右栏面板渲染）
+  candidates: RoomCandidate[] | null
+  repairDraft: RepairDraft | null
+  lastRoute: NavigationRoute | null
+  placeInfo: { buildingId: string; walkMin: number | null } | null
+  admin: AdminOverview | null
+
   setActivePanel: (p: CampusState['activePanel']) => void
   setDrill: (d: CampusState['drill']) => void
   setHeatMode: (m: CampusState['heatMode']) => void
@@ -45,18 +62,19 @@ export interface CampusState {
   selectBuilding: (id?: string) => void
   selectRoom: (id?: string) => void
 
-  // 以下为阶段 2 实现的 Agent/业务闭环，当前保留类型正确的占位
-  submitCommand: (text: string) => Promise<void>
+  submitCommand: (text: string, opts?: DispatchOptions) => Promise<void>
   confirmBooking: (roomId: string) => void
   createTicket: (input: { roomId: string; deviceType?: DeviceType; desc: string }) => Ticket
   advanceTicket: (id: string) => void
-  runDemoScript: (id: 'booking' | 'repair' | 'overview' | 'navigate') => Promise<void>
+  runDemoScript: (id: 'booking' | 'repair' | 'overview' | 'navigate', opts?: DispatchOptions) => Promise<void>
 }
 
 // 虚拟时钟起点：周二 09:58（规格 §3.4，临近下课、潮汐最戏剧化的时刻）
 const CLOCK_START = '2026-03-03T09:58:00'
 
-export const useCampusStore = create<CampusState>((set) => ({
+const agentMessage = (text: string) => ({ role: 'agent' as const, text, ts: Date.now() })
+
+export const useCampusStore = create<CampusState>((set, get) => ({
   world,
   rooms,
   devices,
@@ -68,6 +86,7 @@ export const useCampusStore = create<CampusState>((set) => ({
 
   agentSteps: [],
   messages: [],
+  running: false,
 
   highlightedRoomIds: [],
   activePanel: 'overview',
@@ -76,6 +95,12 @@ export const useCampusStore = create<CampusState>((set) => ({
   drill: { level: 0 },
   quality: 'high',
 
+  candidates: null,
+  repairDraft: null,
+  lastRoute: null,
+  placeInfo: null,
+  admin: null,
+
   setActivePanel: (p) => set({ activePanel: p }),
   setDrill: (d) => set({ drill: d }),
   setHeatMode: (m) => set({ heatMode: m }),
@@ -83,26 +108,120 @@ export const useCampusStore = create<CampusState>((set) => ({
   selectBuilding: (id) => set({ selectedBuildingId: id }),
   selectRoom: (id) => set({ selectedRoomId: id }),
 
-  // 阶段 2 实现：规则 Agent 解析 + 编排步骤流
-  submitCommand: async () => {},
-  // 阶段 2 实现：确认候选房间 -> 生成预约并联动沙盘/面板
-  confirmBooking: () => {},
-  // 阶段 2 完善：设备关联、agent 回执；当前先保证工单可生成、类型正确
+  submitCommand: async (text, opts) => {
+    const s = get()
+    if (s.running || !text.trim()) return
+    set({
+      running: true,
+      agentSteps: [],
+      currentIntent: undefined,
+      messages: [...s.messages, { role: 'user', text, ts: Date.now() }],
+    })
+    try {
+      const { intent, result, effects } = await dispatchCommand(
+        text,
+        {
+          world: s.world,
+          rooms: get().rooms,
+          bookings: get().bookings,
+          tickets: get().tickets,
+          devices: get().devices,
+          virtualTs: s.clock.virtualTs,
+        },
+        (step) => set((cur) => ({ agentSteps: [...cur.agentSteps, step] })),
+        opts ?? {},
+      )
+      set((cur) => ({
+        currentIntent: intent,
+        ...effects,
+        messages: [...cur.messages, agentMessage(result.message)],
+      }))
+    } finally {
+      set({ running: false })
+    }
+  },
+
+  confirmBooking: (roomId) => {
+    const s = get()
+    const room = s.rooms.find((r) => r.id === roomId)
+    if (!room) return
+    const slots = s.currentIntent?.intent === 'book_room' ? s.currentIntent.slots : undefined
+    const start = slots?.start ?? nowHHMM(s.clock.virtualTs)
+    const end = slots?.end ?? endPlus(start, 60)
+    const booking: Booking = {
+      id: nextBookingId(),
+      roomId,
+      user: '演示用户',
+      start,
+      end,
+      status: 'ok',
+      createdAt: new Date().toISOString(),
+    }
+    set((cur) => ({
+      bookings: [...cur.bookings, booking],
+      rooms: cur.rooms.map((r) => (r.id === roomId ? { ...r, status: 'busy' as const } : r)),
+      messages: [
+        ...cur.messages,
+        agentMessage(`预约成功：${roomLabel(room)}，${start}–${end}，预约号 ${booking.id}。`),
+      ],
+    }))
+  },
+
   createTicket: ({ roomId, deviceType, desc }) => {
+    const s = get()
+    const room = s.rooms.find((r) => r.id === roomId)
+    const deviceId = deviceType && s.devices.some((d) => d.id === `${roomId}-${deviceType}`)
+      ? `${roomId}-${deviceType}`
+      : undefined
     const ticket: Ticket = {
-      id: `RP-${String(Date.now() % 100000).padStart(5, '0')}`,
+      id: nextTicketId(),
       roomId,
       desc,
       status: 'new',
-      assignee: '待分配',
+      assignee: '待派单',
       createdAt: new Date().toISOString(),
-      ...(deviceType ? { deviceId: `${roomId}-${deviceType}` } : {}),
+      ...(deviceId ? { deviceId } : {}),
     }
-    set((s) => ({ tickets: [...s.tickets, ticket] }))
+    set((cur) => ({
+      tickets: [...cur.tickets, ticket],
+      repairDraft: null,
+      rooms: cur.rooms.map((r) => (r.id === roomId ? { ...r, status: 'repair' as const } : r)),
+      devices: cur.devices.map((d) => (d.id === deviceId ? { ...d, status: 'fault' as const } : d)),
+      messages: [
+        ...cur.messages,
+        agentMessage(`工单 ${ticket.id} 已创建：${room ? roomLabel(room) : roomId}，${desc}（待受理）。`),
+      ],
+    }))
     return ticket
   },
-  // 阶段 2 实现：工单状态推进 待受理 -> 处理中 -> 已完成
-  advanceTicket: () => {},
-  // 阶段 2 实现：四条链路一键演示脚本
-  runDemoScript: async () => {},
+
+  advanceTicket: (id) => {
+    const s = get()
+    const ticket = s.tickets.find((t) => t.id === id)
+    if (!ticket || ticket.status === 'done') return
+    const next = ticket.status === 'new' ? ('doing' as const) : ('done' as const)
+    set((cur) => ({
+      tickets: cur.tickets.map((t) =>
+        t.id === id ? { ...t, status: next, assignee: next === 'doing' ? '维修组 · 王师傅' : t.assignee } : t,
+      ),
+      // 工单闭环后房间恢复可用、设备恢复在线
+      rooms:
+        next === 'done'
+          ? cur.rooms.map((r) => (r.id === ticket.roomId ? { ...r, status: 'free' as const } : r))
+          : cur.rooms,
+      devices:
+        next === 'done'
+          ? cur.devices.map((d) => (d.id === ticket.deviceId ? { ...d, status: 'ok' as const } : d))
+          : cur.devices,
+      messages: [
+        ...cur.messages,
+        agentMessage(`工单 ${id} → ${next === 'doing' ? '处理中（维修组 · 王师傅）' : '已完成，房间恢复可用'}。`),
+      ],
+    }))
+  },
+
+  runDemoScript: async (id, opts) => {
+    const scenario = DEMO_SCENARIOS.find((s) => s.id === id)
+    if (scenario) await get().submitCommand(scenario.text, opts)
+  },
 }))

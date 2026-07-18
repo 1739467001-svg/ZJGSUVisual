@@ -591,10 +591,12 @@ npm i -D tailwindcss@^3 postcss autoprefixer @types/three
 ### 阶段 2：Agent + 业务闭环（不依赖 3D）
 
 - parseIntent（8 意图）+ 4 handler + 步骤流
+- parseIntent 测试矩阵（`npm i -D vitest`；覆盖 8 意图示例句/口语变体、别名归一化、槽位抽取、unknown 兜底）
 - BookingPanel/RepairPanel 完整闭环；AgentTimeline 渲染步骤
 - demoScenarios 一键跑四条链路（此时 3D 区为占位深色块）
+- 路径引擎 `lib/pathfind.ts` 在本阶段落地（导航面板需要真实分段指引；3D 金色路径在阶段 4 接入）
 
-验收：输入四条演示语句，左栏步骤流 + 右栏面板全部正确联动；预约/报修状态回写 store；`npm run build` 通过。
+验收：输入四条演示语句，左栏步骤流 + 右栏面板全部正确联动；预约/报修状态回写 store；`npm run test` 与 `npm run build` 通过。
 
 ### 阶段 3：3D 世界接入
 

@@ -221,6 +221,29 @@ export interface NavigationRoute {
   accessible?: boolean
 }
 
+// —— 阶段 2 运行态（store 扩展，业务执行的真实结果）——
+export interface RoomCandidate {
+  roomId: string
+  walkMin: number | null // 距正门步行分钟
+}
+
+export interface RepairDraft {
+  buildingId?: string
+  roomId?: string
+  deviceType?: DeviceType
+  desc: string
+}
+
+export interface AdminOverview {
+  occupancyOverall: number // 0..1
+  headcount: number
+  totalPowerKw: number
+  activeTickets: number
+  top: { buildingId: string; occupancy: number }[]
+  anomalies: { id: string; text: string; buildingId?: string; roomId?: string }[]
+  advice: string[]
+}
+
 // —— 3D 镜头语言（规格 §9.6）——
 export type Shot =
   | { kind: 'overview' }

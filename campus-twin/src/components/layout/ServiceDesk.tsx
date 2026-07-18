@@ -1,5 +1,9 @@
 import { useCampusStore, type CampusState } from '../../store/campusStore'
 import { OverviewPanel } from '../service/OverviewPanel'
+import { BookingPanel } from '../service/BookingPanel'
+import { RepairPanel } from '../service/RepairPanel'
+import { AdminPanel } from '../service/AdminPanel'
+import { NavigationPanel } from '../service/NavigationPanel'
 
 const TABS: { id: CampusState['activePanel']; label: string }[] = [
   { id: 'overview', label: '总览' },
@@ -9,9 +13,18 @@ const TABS: { id: CampusState['activePanel']; label: string }[] = [
   { id: 'admin', label: '态势' },
 ]
 
+const PANELS: Record<CampusState['activePanel'], () => React.JSX.Element> = {
+  overview: OverviewPanel,
+  booking: BookingPanel,
+  repair: RepairPanel,
+  navigation: NavigationPanel,
+  admin: AdminPanel,
+}
+
 export function ServiceDesk() {
   const activePanel = useCampusStore((s) => s.activePanel)
   const setActivePanel = useCampusStore((s) => s.setActivePanel)
+  const Panel = PANELS[activePanel]
 
   return (
     <aside className="flex min-h-0 flex-col border-l border-slate-200 bg-panel">
@@ -32,15 +45,7 @@ export function ServiceDesk() {
         ))}
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
-        {activePanel === 'overview' ? (
-          <OverviewPanel />
-        ) : (
-          <div className="flex h-full items-center justify-center p-6 text-center">
-            <p className="text-xs text-slate-400">
-              {TABS.find((t) => t.id === activePanel)?.label}面板 · 阶段 2 接入
-            </p>
-          </div>
-        )}
+        <Panel />
       </div>
     </aside>
   )

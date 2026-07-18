@@ -1,5 +1,6 @@
 import { Pause } from 'lucide-react'
 import { useCampusStore, type CampusState } from '../../store/campusStore'
+import { DEMO_SCENARIOS } from '../../data/demoScenarios'
 
 const SCENE_MODES = ['总览', '搜寻', '剖层', '热力', '导航'] as const
 const RATES: { rate: CampusState['clock']['rate']; label: string }[] = [
@@ -10,7 +11,9 @@ const RATES: { rate: CampusState['clock']['rate']; label: string }[] = [
 
 export function BottomBar() {
   const rate = useCampusStore((s) => s.clock.rate)
+  const running = useCampusStore((s) => s.running)
   const setClockRate = useCampusStore((s) => s.setClockRate)
+  const runDemoScript = useCampusStore((s) => s.runDemoScript)
 
   return (
     <footer className="flex h-11 shrink-0 items-center justify-between border-t border-slate-200 bg-white px-4">
@@ -31,6 +34,22 @@ export function BottomBar() {
             </span>
           ))}
         </div>
+      </div>
+
+      {/* 演示脚本一键触发（规格 §4 底栏） */}
+      <div className="flex items-center gap-1.5">
+        <span className="text-[11px] text-slate-400">演示脚本</span>
+        {DEMO_SCENARIOS.map((s) => (
+          <button
+            key={s.id}
+            type="button"
+            disabled={running}
+            onClick={() => void runDemoScript(s.id)}
+            className="rounded-md border border-brand/30 px-2 py-1 text-[11px] text-brand-dark transition-colors hover:bg-brand/10 disabled:opacity-50"
+          >
+            {s.title.replace(/链路. · /, '')}
+          </button>
+        ))}
       </div>
 
       {/* 时间轴：变速已接入 store，时钟驱动沙盘在阶段 5 接入 */}
