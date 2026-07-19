@@ -9,7 +9,8 @@
     "lint": "oxlint",
     "test": "vitest run",
     "shots": "node scripts/screenshot.mjs",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "uicheck": "node scripts/uicheck.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.7",
