@@ -81,6 +81,19 @@ const CLOCK_START = '2026-03-03T09:58:00'
 
 const agentMessage = (text: string) => ({ role: 'agent' as const, text, ts: Date.now() })
 
+// 意图 → 场景模式（批次 1：sceneMode 统一在此重设，handler 不再各自赋值）
+const INTENT_SCENE_MODE: Record<Intent['intent'], CampusState['sceneMode']> = {
+  book_room: 'searching',
+  find_free_classroom: 'searching',
+  schedule_query: 'searching',
+  repair: 'repair',
+  admin_overview: 'overview',
+  energy_insight: 'overview',
+  navigate: 'navigation',
+  where_is: 'navigation',
+  unknown: 'idle',
+}
+
 export const useCampusStore = create<CampusState>((set, get) => ({
   world,
   rooms,
@@ -139,6 +152,14 @@ export const useCampusStore = create<CampusState>((set, get) => ({
       running: true,
       agentSteps: [],
       currentIntent: undefined,
+      // 指令级状态重置（批次 1 根因修复）：仅在此入口发生一次，
+      // 跨任务上下文（候选/高亮/路径/报修草稿/钻取）不残留到下一个指令
+      candidates: null,
+      highlightedRoomIds: [],
+      lastRoute: null,
+      repairDraft: null,
+      placeInfo: null,
+      drill: { level: 0 },
       messages: [...s.messages, { role: 'user', text, ts: Date.now() }],
     })
     try {
@@ -156,13 +177,14 @@ export const useCampusStore = create<CampusState>((set, get) => ({
         (step) => set((cur) => ({ agentSteps: [...cur.agentSteps, step] })),
         opts ?? {},
       )
+      // sceneMode 按意图统一重设；handler effects 覆盖其余业务字段
+      const sceneMode = effects.sceneMode ?? INTENT_SCENE_MODE[intent.intent]
       set((cur) => ({
         currentIntent: intent,
         ...effects,
+        sceneMode,
         // 离开态势场景时热力指标复位（除非 handler 显式给出）
-        heatMode:
-          effects.heatMode ??
-          (effects.sceneMode && effects.sceneMode !== 'overview' ? 'none' : cur.heatMode),
+        heatMode: effects.heatMode ?? (sceneMode !== 'overview' ? 'none' : cur.heatMode),
         sceneNonce: cur.sceneNonce + 1,
         messages: [...cur.messages, agentMessage(result.message)],
       }))
@@ -232,14 +254,23 @@ export const useCampusStore = create<CampusState>((set, get) => ({
     const ticket = s.tickets.find((t) => t.id === id)
     if (!ticket || ticket.status === 'done') return
     const next = ticket.status === 'new' ? ('doing' as const) : ('done' as const)
+
+    // 房间状态推导（批次 1 修正）：done 时——
+    // 该房间还有其他未闭环工单 → 保持 repair；否则有进行中预约 → busy；都没有 → free
+    let roomStatus: 'free' | 'busy' | 'repair' | null = null
+    if (next === 'done') {
+      const hasOpenTicket = s.tickets.some((t) => t.roomId === ticket.roomId && t.id !== id && t.status !== 'done')
+      const hasActiveBooking = s.bookings.some((b) => b.roomId === ticket.roomId && b.status === 'ok')
+      roomStatus = hasOpenTicket ? 'repair' : hasActiveBooking ? 'busy' : 'free'
+    }
+
     set((cur) => ({
       tickets: cur.tickets.map((t) =>
         t.id === id ? { ...t, status: next, assignee: next === 'doing' ? '维修组 · 王师傅' : t.assignee } : t,
       ),
-      // 工单闭环后房间恢复可用、设备恢复在线
       rooms:
-        next === 'done'
-          ? cur.rooms.map((r) => (r.id === ticket.roomId ? { ...r, status: 'free' as const } : r))
+        roomStatus !== null
+          ? cur.rooms.map((r) => (r.id === ticket.roomId ? { ...r, status: roomStatus } : r))
           : cur.rooms,
       devices:
         next === 'done'
@@ -247,7 +278,17 @@ export const useCampusStore = create<CampusState>((set, get) => ({
           : cur.devices,
       messages: [
         ...cur.messages,
-        agentMessage(`工单 ${id} → ${next === 'doing' ? '处理中（维修组 · 王师傅）' : '已完成，房间恢复可用'}。`),
+        agentMessage(
+          `工单 ${id} → ${
+            next === 'doing'
+              ? '处理中（维修组 · 王师傅）'
+              : roomStatus === 'free'
+                ? '已完成，房间恢复可用'
+                : roomStatus === 'busy'
+                  ? '已完成，房间回到占用态'
+                  : '已完成，该房间仍有未闭环工单'
+          }。`,
+        ),
       ],
     }))
   },

@@ -43,7 +43,6 @@ export const repairHandler: Handler = (intent, ctx) => {
     },
     effects: {
       activePanel: 'repair',
-      sceneMode: 'repair',
       selectedBuildingId: building.id,
       selectedRoomId: room.id,
       repairDraft: {

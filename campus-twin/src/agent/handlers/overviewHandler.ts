@@ -56,6 +56,6 @@ export const overviewHandler: Handler = (intent, ctx) => {
         ? `当前全校功率约 ${data.totalPowerKw} kW，耗电最高的是${topName}，明细在右栏。`
         : `全校占用率 ${pct}%，最紧张的是${topName}，${data.anomalies.length} 项异常、${data.advice.length} 条建议已在右栏。`,
     },
-    effects: { activePanel: 'admin', sceneMode: 'overview', heatMode: isEnergy ? 'energy' : 'occupancy', admin: data },
+    effects: { activePanel: 'admin', heatMode: isEnergy ? 'energy' : 'occupancy', admin: data },
   }
 }

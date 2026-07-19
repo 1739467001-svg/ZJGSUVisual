@@ -27,6 +27,8 @@ export function PulseMarker() {
       first.current = false
       return
     }
+    // 门控（批次 1 防御）：只在报修场景钻取，防镜头劫持后续指令
+    if (useCampusStore.getState().sceneMode !== 'repair') return
     if (room && building) {
       setDrill({ level: 3, buildingId: building.id, floor: room.floor, roomId: room.id })
     }

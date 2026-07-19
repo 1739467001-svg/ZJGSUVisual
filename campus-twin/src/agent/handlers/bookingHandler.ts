@@ -50,7 +50,6 @@ export const bookingHandler: Handler = (intent, ctx) => {
       },
       effects: {
         activePanel: 'booking',
-        sceneMode: 'booking',
         candidates: found.slice(0, 8).map((r) => ({ roomId: r.id, walkMin: walkOf(ctx, r.buildingId) })),
         highlightedRoomIds: found.map((r) => r.id),
       },
@@ -102,8 +101,6 @@ export const bookingHandler: Handler = (intent, ctx) => {
     },
     effects: {
       activePanel: 'booking',
-      // 触发 Wow#2 扫描命中（schedule_query 走另一分支，不动沙盘）
-      sceneMode: 'searching',
       candidates,
       highlightedRoomIds: candidates.map((c) => c.roomId),
     },

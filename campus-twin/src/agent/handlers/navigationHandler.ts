@@ -36,6 +36,8 @@ export const navigationHandler: Handler = (intent, ctx) => {
         selectedBuildingId: b.id,
         placeInfo: { buildingId: b.id, walkMin: route?.walkMin ?? null },
         lastRoute: null,
+        // 位置查询只定位，不跟拍（金色路径只属于 navigate）
+        cameraShot: { kind: 'push', buildingId: b.id, ms: 1200 },
       },
     }
   }
@@ -72,7 +74,6 @@ export const navigationHandler: Handler = (intent, ctx) => {
     },
     effects: {
       activePanel: 'navigation',
-      sceneMode: 'navigation',
       lastRoute: route,
       placeInfo: null,
       ...(toRef.kind === 'building' ? { selectedBuildingId: toRef.id } : {}),

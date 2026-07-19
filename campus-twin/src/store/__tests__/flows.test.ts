@@ -102,3 +102,76 @@ describe('unknown 兜底', () => {
     expect(s.messages[s.messages.length - 1].text).toContain('三号楼 302 投影坏了')
   })
 })
+
+describe('跨指令干扰（批次 1 回归）', () => {
+  it('报修 → 预约：草稿/钻取清空，进入扫描场景', async () => {
+    await submit('三号楼 302 投影坏了')
+    expect(state().repairDraft).not.toBeNull()
+    await submit('帮我找一个现在空着、有投影、能坐 8 个人的会议室')
+    const s = state()
+    expect(s.repairDraft).toBeNull()
+    expect(s.sceneMode).toBe('searching')
+    expect(s.drill.level).toBe(0)
+    expect(s.candidates).not.toBeNull()
+    expect(s.candidates!.length).toBeGreaterThan(0)
+  })
+
+  it('预约 → 报修：候选清空，进入报修场景', async () => {
+    await submit('帮我找一个现在空着、有投影、能坐 8 个人的会议室')
+    expect(state().candidates).not.toBeNull()
+    await submit('三号楼 302 投影坏了')
+    const s = state()
+    expect(s.candidates).toBeNull()
+    expect(s.sceneMode).toBe('repair')
+    expect(s.repairDraft).not.toBeNull()
+    expect(s.repairDraft!.roomId).toBe('jxc-302')
+  })
+
+  it('预约 → unknown：场景回 idle，候选与高亮清空', async () => {
+    await submit('帮我找一个现在空着、有投影、能坐 8 个人的会议室')
+    expect(state().highlightedRoomIds.length).toBeGreaterThan(0)
+    await submit('今天天气怎么样')
+    const s = state()
+    expect(s.sceneMode).toBe('idle')
+    expect(s.candidates).toBeNull()
+    expect(s.highlightedRoomIds).toEqual([])
+  })
+
+  it('导航 → where_is：lastRoute 清空不重演跟拍，placeInfo 落库', async () => {
+    await submit('我从正门怎么去图书馆？')
+    expect(state().lastRoute).not.toBeNull()
+    await submit('信电学院在哪')
+    const s = state()
+    expect(s.lastRoute).toBeNull()
+    expect(s.placeInfo).not.toBeNull()
+    expect(s.placeInfo!.buildingId).toBe('xindian')
+    expect(s.sceneMode).toBe('navigation')
+  })
+
+  it('advanceTicket：同房间多工单/有预约的状态推导', () => {
+    // 同一房间两个工单：done 其一 → 仍 repair
+    state().createTicket({ roomId: 'jxc-302', deviceType: 'projector', desc: '投影坏' })
+    state().createTicket({ roomId: 'jxc-302', deviceType: 'computer', desc: '电脑坏' })
+    expect(state().rooms.find((r) => r.id === 'jxc-302')!.status).toBe('repair')
+    state().advanceTicket('RP-001')
+    state().advanceTicket('RP-001')
+    expect(state().tickets.find((t) => t.id === 'RP-001')!.status).toBe('done')
+    expect(state().rooms.find((r) => r.id === 'jxc-302')!.status).toBe('repair') // RP-002 未闭环
+    // 全部 done → 无预约时 free
+    state().advanceTicket('RP-002')
+    state().advanceTicket('RP-002')
+    expect(state().rooms.find((r) => r.id === 'jxc-302')!.status).toBe('free')
+    // 有进行中预约的房间：工单 done 后 → busy
+    useCampusStore.setState((cur) => ({
+      bookings: [
+        { id: 'B-900', roomId: 'lib-501', user: 'u', start: '10:00', end: '11:00', status: 'ok', createdAt: '' },
+      ],
+      rooms: cur.rooms.map((r) => (r.id === 'lib-501' ? { ...r, status: 'busy' as const } : r)),
+    }))
+    state().createTicket({ roomId: 'lib-501', deviceType: 'light', desc: '灯坏' })
+    expect(state().rooms.find((r) => r.id === 'lib-501')!.status).toBe('repair')
+    state().advanceTicket('RP-003')
+    state().advanceTicket('RP-003')
+    expect(state().rooms.find((r) => r.id === 'lib-501')!.status).toBe('busy')
+  })
+})

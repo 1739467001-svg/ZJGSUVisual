@@ -9,6 +9,7 @@ import type {
   RepairDraft,
   Room,
   RoomCandidate,
+  Shot,
   TaskResult,
   Ticket,
   WorldData,
@@ -36,6 +37,7 @@ export interface CampusEffects {
   activePanel?: 'overview' | 'booking' | 'repair' | 'navigation' | 'admin'
   sceneMode?: 'idle' | 'searching' | 'booking' | 'repair' | 'overview' | 'navigation'
   heatMode?: 'none' | 'energy' | 'traffic' | 'occupancy'
+  cameraShot?: Shot
   selectedBuildingId?: string
   selectedRoomId?: string
   highlightedRoomIds?: string[]
