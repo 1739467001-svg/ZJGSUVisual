@@ -23,6 +23,10 @@ const WOWS = [
   { name: 'wow-pulse', script: `runDemoScript('repair', { stepDelay: 0 })`, wait: 3500 },
   { name: 'wow-heat', script: `runDemoScript('overview', { stepDelay: 0 })`, wait: 4000 },
   { name: 'wow-route', script: `runDemoScript('navigate', { stepDelay: 0 })`, wait: 2800 },
+  // 阶段 5
+  { name: 'admin-charts', script: `runDemoScript('overview', { stepDelay: 0 })`, wait: 4500 },
+  { name: 'tide-burst', query: '?t=10:29', script: `setClockRate(60)`, wait: 4000 },
+  { name: 'evening', query: '?t=18:00', script: '', wait: 1500 },
 ]
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))
@@ -69,10 +73,10 @@ try {
     await page.close()
   }
 
-  for (const { name, script, wait } of WOWS) {
-    const page = await openScene('?t=10:00')
+  for (const { name, script, wait, query } of WOWS) {
+    const page = await openScene(query ?? '?t=10:00')
     await sleep(800)
-    await page.evaluate(`window.__STORE__.getState().${script}`)
+    if (script) await page.evaluate(`window.__STORE__.getState().${script}`)
     await sleep(wait)
     const calls = await page.evaluate('window.__DRAWCALLS__')
     await page.screenshot({ path: join(SHOTS, `${name}.png`) })

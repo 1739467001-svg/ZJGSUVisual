@@ -1,79 +1,25 @@
-import type { AdminOverview, BuildingKind, Room } from '../../types'
-import { overlaps } from '../../lib/time'
-import { nowHHMM, endPlus } from '../../lib/time'
-import { buildingName, deviceLabel, roomLabel } from '../../lib/format'
+import type { AdminOverview } from '../../types'
+import { buildingName } from '../../lib/format'
+import { buildAnomalies } from '../../lib/anomalies'
 import type { Handler, HandlerContext } from '../handlerTypes'
 
-// 各业态基础功率（kW，每万㎡）；潮汐精修在阶段 5
-const BASE_KW: Record<BuildingKind, number> = {
-  library: 120,
-  admin: 90,
-  teaching: 60,
-  faculty: 70,
-  venue: 80,
-  sports: 100,
-  canteen: 90,
-  dorm: 50,
-}
-
-function roomOccupied(r: Room, ctx: HandlerContext, now: string): boolean {
-  const end = endPlus(now, 30)
-  if (r.schedule.some((s) => overlaps(s.start, s.end, now, end))) return true
-  return ctx.bookings.some((b) => b.roomId === r.id && b.status === 'ok' && overlaps(b.start, b.end, now, end))
-}
-
+// 态势聚合（规格 §5.3）：全部读模拟引擎 snapshot，与沙盘/KPI/图表同源；
+// 调度建议基于工单与占用排行，保持可解释
 export function summarize(ctx: HandlerContext): AdminOverview {
-  const now = nowHHMM(ctx.virtualTs)
-  const perBuilding = ctx.world.buildings.map((b) => {
-    const rooms = ctx.rooms.filter((r) => r.buildingId === b.id)
-    if (!rooms.length) return { buildingId: b.id, occupancy: 0, headcount: 0 }
-    const busy = rooms.filter((r) => roomOccupied(r, ctx, now))
-    const occupancy = busy.length / rooms.length
-    const headcount = busy.reduce((acc, r) => acc + Math.round(r.capacity * 0.8), 0)
-    return { buildingId: b.id, occupancy, headcount }
-  })
-
-  const withRooms = perBuilding.filter((p) => ctx.rooms.some((r) => r.buildingId === p.buildingId))
-  const occupancyOverall = withRooms.length
-    ? withRooms.reduce((a, p) => a + p.occupancy, 0) / withRooms.length
-    : 0
-  const headcount = perBuilding.reduce((a, p) => a + p.headcount, 0)
-  const totalPowerKw = ctx.world.buildings.reduce((acc, b) => {
-    const occ = perBuilding.find((p) => p.buildingId === b.id)?.occupancy ?? 0
-    const areaFactor = (b.area ?? 10000) / 10000
-    return acc + BASE_KW[b.kind] * (0.35 + 0.65 * occ) * areaFactor
-  }, 0)
-
-  const active = ctx.tickets.filter((t) => t.status !== 'done')
-  const anomalies: AdminOverview['anomalies'] = [
-    ...ctx.devices
-      .filter((d) => d.status === 'fault')
-      .map((d) => {
-        const room = ctx.rooms.find((r) => r.id === d.roomId)
-        return {
-          id: `dev-${d.id}`,
-          text: `${room ? roomLabel(room) : d.roomId} ${deviceLabel(d.type)}故障`,
-          ...(room ? { buildingId: room.buildingId, roomId: room.id } : {}),
-        }
-      }),
-    ...active.map((t) => {
-      const room = ctx.rooms.find((r) => r.id === t.roomId)
-      return {
-        id: t.id,
-        text: `${t.id} ${room ? roomLabel(room) : t.roomId}：${t.desc}（${t.status === 'new' ? '待受理' : '处理中'}）`,
-        ...(room ? { buildingId: room.buildingId } : {}),
-        roomId: t.roomId,
-      }
-    }),
-  ]
-
+  const snap = ctx.snapshot
+  const perBuilding = ctx.world.buildings.map((b) => ({
+    buildingId: b.id,
+    occupancy: snap.pulses[b.id]?.occupancy ?? 0,
+  }))
   const top = [...perBuilding].sort((a, b) => b.occupancy - a.occupancy).slice(0, 5)
+  const anomalies = buildAnomalies(ctx.rooms, ctx.tickets, ctx.devices)
+  const active = ctx.tickets.filter((t) => t.status !== 'done')
 
   const advice: string[] = []
   const newTicket = ctx.tickets.find((t) => t.status === 'new')
   if (newTicket) {
     const room = ctx.rooms.find((r) => r.id === newTicket.roomId)
-    advice.push(`${room ? roomLabel(room) : newTicket.roomId} 报修未受理（${newTicket.id}），建议派员处理`)
+    advice.push(`${room ? `${buildingName(room.buildingId)} ${room.name}` : newTicket.roomId} 报修未受理（${newTicket.id}），建议派员处理`)
   }
   const busiest = top[0]
   if (busiest && busiest.occupancy >= 0.5) {
@@ -82,9 +28,9 @@ export function summarize(ctx: HandlerContext): AdminOverview {
   if (!advice.length) advice.push('当前全校运行平稳，无待处理异常')
 
   return {
-    occupancyOverall,
-    headcount,
-    totalPowerKw: Math.round(totalPowerKw),
+    occupancyOverall: snap.occupancyOverall,
+    headcount: snap.totalHeadcount,
+    totalPowerKw: snap.totalPowerKw,
     activeTickets: active.length,
     top,
     anomalies,

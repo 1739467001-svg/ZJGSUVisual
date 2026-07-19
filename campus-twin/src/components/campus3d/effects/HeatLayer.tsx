@@ -5,6 +5,7 @@ import { world } from '../../../data/world'
 import { useCampusStore } from '../../../store/campusStore'
 import { useOccupancyMap } from '../useOccupancy'
 import { energyMetrics, heatColor, heatHeightScale } from '../../../lib/heatMath'
+import { buildingTrafficWeights } from '../../../sim/traffic'
 import { liveFx } from '../liveFx'
 
 // Wow#5 热力爆发（链路三）：镜头拉高 1100m 俯视 → 楼宇按热力指标升起（楼体缩放
@@ -19,12 +20,14 @@ export function HeatLayer() {
   const first = useRef(true)
 
   const active = sceneMode === 'overview' || heatMode === 'energy' || heatMode === 'traffic'
+  const nowMinute = useCampusStore((s) => s.clock.virtualTs)
 
-  // 指标：occupancy 直用；energy 归一化估算；traffic 阶段 5 接 TrafficModel，先以 occupancy 占位
-  const metrics = useMemo(
-    () => (heatMode === 'energy' ? energyMetrics(world, occupancy) : occupancy),
-    [heatMode, occupancy],
-  )
+  // 指标：occupancy 直用 snapshot；energy 归一化估算；traffic 取 TrafficModel 楼宇最近道路权重
+  const metrics = useMemo(() => {
+    if (heatMode === 'energy') return energyMetrics(world, occupancy)
+    if (heatMode === 'traffic') return buildingTrafficWeights(world, new Date(nowMinute))
+    return occupancy
+  }, [heatMode, occupancy, nowMinute])
   useEffect(() => {
     liveFx.heatMetric = metrics
   }, [metrics])

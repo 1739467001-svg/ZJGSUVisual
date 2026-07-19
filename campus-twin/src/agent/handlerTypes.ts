@@ -2,6 +2,7 @@ import type {
   AdminOverview,
   AgentName,
   Booking,
+  CampusSnapshot,
   Device,
   Intent,
   NavigationRoute,
@@ -20,6 +21,7 @@ export interface HandlerContext {
   tickets: Ticket[]
   devices: Device[]
   virtualTs: string
+  snapshot: CampusSnapshot
 }
 
 export interface StepDraft {

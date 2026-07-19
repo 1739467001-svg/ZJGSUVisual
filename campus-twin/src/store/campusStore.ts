@@ -23,6 +23,7 @@ import { nowHHMM, endPlus } from '../lib/time'
 import { roomLabel } from '../lib/format'
 import { DEMO_SCENARIOS } from '../data/demoScenarios'
 import { simClock } from '../sim/clock'
+import { pulseAt, trafficOnRoads } from '../sim/engine'
 
 export interface CampusState {
   world: WorldData
@@ -32,7 +33,8 @@ export interface CampusState {
   tickets: Ticket[]
 
   clock: { virtualTs: string; rate: 0 | 1 | 10 | 60; running: boolean }
-  snapshot: CampusSnapshot // 阶段 5 由模拟引擎按 clock 产出，当前为空壳
+  snapshot: CampusSnapshot // 模拟引擎按 clock 产出，1Hz 节流刷新
+  traffic: Record<string, number> // roadId -> 人流权重 0..1（TrafficModel）
 
   currentIntent?: Intent
   agentSteps: AgentStep[]
@@ -87,7 +89,8 @@ export const useCampusStore = create<CampusState>((set, get) => ({
   tickets: [],
 
   clock: { virtualTs: CLOCK_START, rate: 60, running: true },
-  snapshot: { ts: CLOCK_START, pulses: {}, totalHeadcount: 0, totalPowerKw: 0, occupancyOverall: 0 },
+  snapshot: pulseAt(world, rooms, [], new Date(CLOCK_START)),
+  traffic: trafficOnRoads(world, new Date(CLOCK_START)),
 
   agentSteps: [],
   messages: [],
@@ -114,10 +117,15 @@ export const useCampusStore = create<CampusState>((set, get) => ({
     simClock.setRate(r)
     set((s) => ({ clock: { ...s.clock, rate: r, running: r > 0 } }))
   },
-  // 时间轴滑杆直接设时刻；virtualTs 平时由 ClockBridge 以 ~1Hz 从 simClock 回同步
+  // 时间轴滑杆直接设时刻；snapshot/traffic 立即重算（平时由 ClockBridge 1Hz 刷新）
   setVirtualTs: (iso) => {
-    simClock.setTime(new Date(iso))
-    set((s) => ({ clock: { ...s.clock, virtualTs: iso } }))
+    const t = new Date(iso)
+    simClock.setTime(t)
+    set((s) => ({
+      clock: { ...s.clock, virtualTs: iso },
+      snapshot: pulseAt(s.world, s.rooms, s.tickets, t),
+      traffic: trafficOnRoads(s.world, t),
+    }))
   },
   setCameraShot: (shot) => set({ cameraShot: shot }),
   setQuality: (q) => set({ quality: q }),
@@ -143,6 +151,7 @@ export const useCampusStore = create<CampusState>((set, get) => ({
           tickets: get().tickets,
           devices: get().devices,
           virtualTs: s.clock.virtualTs,
+          snapshot: get().snapshot,
         },
         (step) => set((cur) => ({ agentSteps: [...cur.agentSteps, step] })),
         opts ?? {},
