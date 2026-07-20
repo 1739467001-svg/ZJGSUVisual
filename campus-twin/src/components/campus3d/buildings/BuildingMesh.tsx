@@ -88,6 +88,12 @@ export function BuildingMesh({ b, occupancy, drill }: { b: BuildingSpec; occupan
           selectBuilding(b.id)
           setDrill({ level: 1, buildingId: b.id })
         }}
+        onDoubleClick={(e) => {
+          e.stopPropagation()
+          selectBuilding(b.id)
+          // 双击直接进 Lv2 楼层剖层（规格 §9.4）
+          setDrill({ level: 2, buildingId: b.id })
+        }}
       >
         <meshPhysicalMaterial
           ref={matRef}

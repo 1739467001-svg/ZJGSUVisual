@@ -19,7 +19,7 @@ export function HeatLayer() {
   const quadRef = useRef<THREE.InstancedMesh>(null)
   const first = useRef(true)
 
-  const active = sceneMode === 'overview' || heatMode === 'energy' || heatMode === 'traffic'
+  const active = sceneMode === 'overview' || heatMode !== 'none'
   const nowMinute = useCampusStore((s) => s.clock.virtualTs)
 
   // 指标：occupancy 直用 snapshot；energy 归一化估算；traffic 取 TrafficModel 楼宇最近道路权重

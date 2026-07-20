@@ -27,6 +27,8 @@ const WOWS = [
   { name: 'admin-charts', script: `runDemoScript('overview', { stepDelay: 0 })`, wait: 4500 },
   { name: 'tide-burst', query: '?t=10:29', script: `setClockRate(60)`, wait: 4000 },
   { name: 'evening', query: '?t=18:00', script: '', wait: 1500 },
+  // 批次 2：10:31 下课潮汐 + 人流热力
+  { name: 'heat-traffic', query: '?t=10:31', script: `setHeatMode('traffic')`, wait: 4000 },
 ]
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms))

@@ -63,6 +63,7 @@ export interface CampusState {
   setDrill: (d: CampusState['drill']) => void
   setHeatMode: (m: CampusState['heatMode']) => void
   setClockRate: (r: CampusState['clock']['rate']) => void
+  resetView: () => void
   setVirtualTs: (iso: string) => void
   setCameraShot: (shot?: Shot) => void
   setQuality: (q: CampusState['quality']) => void
@@ -125,11 +126,23 @@ export const useCampusStore = create<CampusState>((set, get) => ({
 
   setActivePanel: (p) => set({ activePanel: p }),
   setDrill: (d) => set({ drill: d }),
-  setHeatMode: (m) => set({ heatMode: m }),
+  // 手动热力：开 → topdown 俯视，关 → 回总览（任务态热力由 HeatLayer 驱动，不冲突）
+  setHeatMode: (m) =>
+    set({ heatMode: m, cameraShot: m === 'none' ? { kind: 'overview' } : { kind: 'topdown', ms: 1500 } }),
   setClockRate: (r) => {
     simClock.setRate(r)
     set((s) => ({ clock: { ...s.clock, rate: r, running: r > 0 } }))
   },
+  // 视图复位（批次 2）：只复位镜头/钻取/热力/场景，绝不清 candidates/bookings 等业务数据
+  resetView: () =>
+    set({
+      drill: { level: 0 },
+      heatMode: 'none',
+      sceneMode: 'idle',
+      cameraShot: { kind: 'overview' },
+      selectedBuildingId: undefined,
+      selectedRoomId: undefined,
+    }),
   // 时间轴滑杆直接设时刻；snapshot/traffic 立即重算（平时由 ClockBridge 1Hz 刷新）
   setVirtualTs: (iso) => {
     const t = new Date(iso)

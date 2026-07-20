@@ -104,6 +104,35 @@ try {
   await sleep(4500)
   console.log('lastRoute:', await store('lastRoute !== null'), 'activePanel:', await store('activePanel'))
 
+  // 4.5 场景模式条（批次 2）：5 chip 皆为 button；高亮跟随 sceneMode；热力/总览点击生效
+  console.log('\n— 场景模式条 —')
+  const chips = await page.evaluate(() =>
+    [...document.querySelectorAll('footer button')].map((b) => b.textContent?.trim()).filter(Boolean),
+  )
+  const chipNames = ['总览', '搜索', '剖层', '热力', '导航']
+  const allAreButtons = chipNames.every((c) => chips.includes(c))
+  console.log('5 个场景 chip 均为 button:', allAreButtons ? '✓' : `✗ (${JSON.stringify(chips)})`)
+  const navHighlighted = await page.evaluate(() =>
+    [...document.querySelectorAll('footer button')].some(
+      (b) => b.textContent?.trim() === '导航' && b.className.includes('bg-ink'),
+    ),
+  )
+  console.log('跑完导航脚本后「导航」chip 高亮:', navHighlighted ? '✓' : '✗')
+  const clickFooter = (txt) =>
+    page.evaluate((t) => {
+      const btn = [...document.querySelectorAll('footer button')].find((b) => b.textContent?.trim() === t && !b.disabled)
+      if (btn) { btn.dispatchEvent(new MouseEvent('click', { bubbles: true })); return true }
+      return false
+    }, txt)
+  console.log('点击「热力」:', await clickFooter('热力'))
+  await sleep(1200)
+  console.log('heatMode !== none:', (await store('heatMode')) !== 'none' ? '✓' : `✗ (${await store('heatMode')})`)
+  console.log('点击「总览」复位:', await clickFooter('总览'))
+  await sleep(1200)
+  const hm = await store('heatMode')
+  const dl = await store('drill.level')
+  console.log('复位后 heatMode=none 且 drill=0:', hm === 'none' && dl === 0 ? '✓' : `✗ (${hm}, ${dl})`)
+
   // 5. 角色切换/价值标签/其他顶部控件
   console.log('\n— 顶部控件 —')
   for (const t of ['访客', '学生', '管理员']) {

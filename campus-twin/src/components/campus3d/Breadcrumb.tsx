@@ -35,6 +35,16 @@ export function Breadcrumb() {
           <span className="text-gold">{room.name}</span>
         </span>
       )}
+      {/* Lv1 → Lv2 剖层入口（与双击楼体等价） */}
+      {drill.level === 1 && drill.buildingId && (
+        <button
+          type="button"
+          onClick={() => setDrill({ level: 2, buildingId: drill.buildingId })}
+          className="ml-1 rounded border border-brand/40 px-1.5 py-0.5 text-[10px] text-brand-light hover:bg-brand/20"
+        >
+          剖层
+        </button>
+      )}
     </div>
   )
 }
