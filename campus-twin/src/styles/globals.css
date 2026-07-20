@@ -17,6 +17,21 @@ body {
   @apply bg-panel font-sans text-slate-800 antialiased;
 }
 
+/* 首屏唤醒：悬浮标签在楼体弹起后淡入（规格 §15 00-03s） */
+@keyframes label-wake-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.label-wake {
+  animation: label-wake-in 0.6s ease-out 2s backwards;
+}
+
 /* 中栏沙盘占位：细网格底座，阶段 3 由 Canvas 替换 */
 .sandbox-grid {
   background-color: var(--color-ink);

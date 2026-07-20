@@ -16,7 +16,7 @@ export function BuildingLabels({ occupancy }: { occupancy: Map<string, number> }
           center
           zIndexRange={[20, 0]}
         >
-          <div className="pointer-events-none whitespace-nowrap rounded-md border border-white/10 bg-ink/80 px-2 py-1 text-[11px] text-slate-200 backdrop-blur-sm">
+          <div className="label-wake pointer-events-none whitespace-nowrap rounded-md border border-white/10 bg-ink/80 px-2 py-1 text-[11px] text-slate-200 backdrop-blur-sm">
             {b.name}
             <span className="ml-1.5 tabular-nums text-brand-light">
               {Math.round((occupancy.get(b.id) ?? 0) * 100)}%

@@ -62,7 +62,8 @@ export function CampusCanvas() {
   return (
     <Canvas
       dpr={quality === 'low' ? 1 : [1, 1.75]}
-      camera={{ position: [452, 447, 452], fov: 42, near: 1, far: 7000 }}
+      // 首屏唤醒：镜头从 1700m 高空俯冲至总览位（CameraDirector damp 接管，约 2s 落位）
+      camera={{ position: [900, 1100, 900], fov: 42, near: 1, far: 7000 }}
       gl={{ antialias: true }}
       onPointerMissed={() => {
         selectBuilding(undefined)

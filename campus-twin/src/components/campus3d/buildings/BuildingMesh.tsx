@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import type { BuildingKind, BuildingSpec } from '../../../types'
 import { useCampusStore, type CampusState } from '../../../store/campusStore'
 import { liveFx } from '../liveFx'
+import { introScale } from './intro'
 import { StatusLightBand } from './StatusLightBand'
 import { DrillSlabs } from './DrillSlabs'
 
@@ -45,7 +46,7 @@ export function BuildingMesh({ b, occupancy, drill }: { b: BuildingSpec; occupan
   const isDimmed = drill.level >= 1 && !isTarget
   const slabMode = isTarget && drill.level >= 2
 
-  useFrame((_, delta) => {
+  useFrame((state, delta) => {
     const g = groupRef.current
     const mesh = meshRef.current
     const mat = matRef.current
@@ -53,9 +54,11 @@ export function BuildingMesh({ b, occupancy, drill }: { b: BuildingSpec; occupan
     // Lv1 抬升 +12m；其余楼降透明 0.15（规格 §9.4）
     g.position.y = THREE.MathUtils.damp(g.position.y, isTarget ? 12 : 0, 3, delta)
     opacity.current = THREE.MathUtils.damp(opacity.current, isDimmed ? 0.15 : 1, 4, delta)
-    // Wow#5 热力：楼高按指标升起
+    // 首屏唤醒：错峰弹起（直接驱动，不 damp）；结束后 Wow#5 热力楼高接管
+    const intro = introScale(b.id, state.clock.elapsedTime)
     const metric = liveFx.heatMetric.get(b.id) ?? 0
-    const scaleY = THREE.MathUtils.damp(mesh.scale.y, 1 + liveFx.heat * 0.6 * metric, 3, delta)
+    const scaleY =
+      intro < 1 ? intro : THREE.MathUtils.damp(mesh.scale.y, 1 + liveFx.heat * 0.6 * metric, 3, delta)
     mesh.scale.y = scaleY
     mesh.position.y = (h * scaleY) / 2
     if (edgesRef.current) {
