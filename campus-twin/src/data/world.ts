@@ -24,7 +24,7 @@ function assertWorldData(raw: unknown): asserts raw is WorldData {
       throw new Error(`campus-zjgsu.json: 楼宇字段不完整 ${JSON.stringify(b)}`)
     }
   }
-  for (const key of ['gates', 'roads', 'water', 'plazas', 'distantQuarters'] as const) {
+  for (const key of ['gates', 'roads', 'water', 'plazas', 'distantQuarters', 'contextBuildings', 'greenery'] as const) {
     if (!Array.isArray(raw[key])) throw new Error(`campus-zjgsu.json: ${key} 必须是数组`)
   }
   if (!isRecord(raw.spokenAliases)) throw new Error('campus-zjgsu.json: spokenAliases 缺失')
@@ -32,6 +32,12 @@ function assertWorldData(raw: unknown): asserts raw is WorldData {
 
 assertWorldData(worldJson)
 export const world: WorldData = worldJson
+
+// 场景中心（bounds 中心）：总览镜头、地面、首屏俯冲入场的共同锚点
+export const worldCenter: [number, number] = [
+  (world.bounds.west + world.bounds.east) / 2,
+  (world.bounds.north + world.bounds.south) / 2,
+]
 
 const buildingIndex = new Map(world.buildings.map((b) => [b.id, b]))
 

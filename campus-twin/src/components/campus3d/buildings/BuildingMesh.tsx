@@ -4,6 +4,7 @@ import { useFrame } from '@react-three/fiber'
 import type { BuildingKind, BuildingSpec } from '../../../types'
 import { useCampusStore, type CampusState } from '../../../store/campusStore'
 import { liveFx } from '../liveFx'
+import { extrudeOutline } from '../../../lib/outline'
 import { introScale } from './intro'
 import { StatusLightBand } from './StatusLightBand'
 import { DrillSlabs } from './DrillSlabs'
@@ -28,8 +29,14 @@ export function BuildingMesh({ b, occupancy, drill }: { b: BuildingSpec; occupan
   const h = b.floors * b.floorHeight
   // 图书馆 floors=6 含地下 1 层，剖层按地上 5 层（规格 §9.4 注）
   const sliceCount = b.id === 'lib' ? 5 : b.floors
+  const [cx, cz] = b.position
+  const hasOutline = !!b.outline?.length
 
-  const geo = useMemo(() => new THREE.BoxGeometry(b.footprint[0], h, b.footprint[1]), [b.footprint, h])
+  // v4：有 outline 用真实轮廓拉伸体（底面 y=0、质心为原点）；否则保持盒体（中心几何）
+  const geo = useMemo(
+    () => (hasOutline ? extrudeOutline(b.outline!, cx, cz, h) : new THREE.BoxGeometry(b.footprint[0], h, b.footprint[1])),
+    [hasOutline, b.outline, b.footprint, h, cx, cz],
+  )
   const edges = useMemo(() => new THREE.EdgesGeometry(geo), [geo])
   const baseColor = useMemo(() => new THREE.Color(KIND_COLOR[b.kind]), [b.kind])
 
@@ -60,7 +67,8 @@ export function BuildingMesh({ b, occupancy, drill }: { b: BuildingSpec; occupan
     const scaleY =
       intro < 1 ? intro : THREE.MathUtils.damp(mesh.scale.y, 1 + liveFx.heat * 0.6 * metric, 3, delta)
     mesh.scale.y = scaleY
-    mesh.position.y = (h * scaleY) / 2
+    // 盒体为中心几何需抬半高；轮廓拉伸体底面本就在 y=0
+    mesh.position.y = hasOutline ? 0 : (h * scaleY) / 2
     if (edgesRef.current) {
       edgesRef.current.scale.y = scaleY
       edgesRef.current.position.y = mesh.position.y
@@ -85,7 +93,7 @@ export function BuildingMesh({ b, occupancy, drill }: { b: BuildingSpec; occupan
       <mesh
         ref={meshRef}
         geometry={geo}
-        position={[0, h / 2, 0]}
+        position={[0, hasOutline ? 0 : h / 2, 0]}
         onClick={(e) => {
           e.stopPropagation()
           selectBuilding(b.id)
@@ -108,7 +116,7 @@ export function BuildingMesh({ b, occupancy, drill }: { b: BuildingSpec; occupan
         />
       </mesh>
       {/* 描边线框（规格 §9.3：#7fb2e5 opacity 0.5） */}
-      <lineSegments ref={edgesRef} geometry={edges} position={[0, h / 2, 0]}>
+      <lineSegments ref={edgesRef} geometry={edges} position={[0, hasOutline ? 0 : h / 2, 0]}>
         <lineBasicMaterial ref={edgesMatRef} color="#7fb2e5" transparent opacity={0.5} />
       </lineSegments>
       <group ref={bandWrapRef} position={[0, h + 0.2, 0]}>

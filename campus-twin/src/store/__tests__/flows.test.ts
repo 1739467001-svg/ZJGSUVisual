@@ -89,7 +89,7 @@ describe('链路四 · 新生导航', () => {
     expect(s.lastRoute).not.toBeNull()
     expect(s.lastRoute!.distanceM).toBeGreaterThan(300)
     expect(s.lastRoute!.segments.length).toBeGreaterThanOrEqual(3)
-    expect(s.lastRoute!.segments.map((x) => x.text).join('')).toContain('图书馆前广场')
+    expect(s.lastRoute!.segments.map((x) => x.text).join('')).toMatch(/沿.+前行/)
     expect(s.sceneMode).toBe('navigation')
   })
 })

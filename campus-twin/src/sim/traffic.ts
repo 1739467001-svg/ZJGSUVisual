@@ -1,16 +1,29 @@
-import type { WorldData } from '../types'
+import type { Road, WorldData } from '../types'
 import { isMealWindow, minutesOf, pulseState, sinceLastPulse, tideNoise } from './tides'
 
 // TrafficModel（规格 §7）：下课脉冲时教学楼→食堂/图书馆方向道路权重升高并衰减；
 // 食堂窗期间食堂周边道路高位；其余时间 0.1~0.2 底噪。输出确定性。
-const ROAD_ROLE: Record<string, 'teaching' | 'canteen' | 'mixed'> = {
-  'rd-axis': 'teaching', // 中央礼仪轴：教学楼群 → 图书馆/正门
-  'rd-mid-ns': 'teaching', // 求真路：纵穿教学区
-  'rd-lib-s': 'teaching', // 馆前环路
-  'rd-ring-n': 'canteen', // 乃器路：行云苑/北侧宿舍方向
-  'rd-ring-s': 'canteen', // 春华路：清风苑/文体方向
-  'rd-xuezheng': 'mixed',
-  'rd-west': 'mixed',
+// v4：道路角色不再硬编码 rd-*，按与楼的实测距离分类——食堂 60m 内 = canteen，
+// 教学/学院/图书/行政 60m 内 = teaching，其余 mixed
+const ROLE_NEAR_M = 60
+
+export function roadRoleOf(world: WorldData, road: Road): 'teaching' | 'canteen' | 'mixed' {
+  let canteenD = Infinity
+  let teachingD = Infinity
+  for (const b of world.buildings) {
+    const isCanteen = b.kind === 'canteen'
+    const isTeaching = b.kind === 'teaching' || b.kind === 'faculty' || b.kind === 'library' || b.kind === 'admin'
+    if (!isCanteen && !isTeaching) continue
+    for (let i = 0; i < road.path.length - 1; i++) {
+      const d = distToSeg(b.position[0], b.position[1], road.path[i], road.path[i + 1])
+      if (isCanteen && d < canteenD) canteenD = d
+      if (isTeaching && d < teachingD) teachingD = d
+    }
+  }
+  if (canteenD <= ROLE_NEAR_M && canteenD <= teachingD) return 'canteen'
+  if (teachingD <= ROLE_NEAR_M) return 'teaching'
+  if (canteenD <= ROLE_NEAR_M) return 'canteen'
+  return 'mixed'
 }
 
 export function trafficOnRoads(world: WorldData, t: Date): Record<string, number> {
@@ -19,7 +32,7 @@ export function trafficOnRoads(world: WorldData, t: Date): Record<string, number
   const since = sinceLastPulse(m) // break 态时 0..10
   const out: Record<string, number> = {}
   for (const r of world.roads) {
-    const role = ROAD_ROLE[r.id] ?? 'mixed'
+    const role = roadRoleOf(world, r)
     let w = 0.15
     if (st === 'break') {
       const decay = Math.max(0, 1 - since / 10)

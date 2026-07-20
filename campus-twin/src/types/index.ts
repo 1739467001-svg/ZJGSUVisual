@@ -27,9 +27,25 @@ export interface BuildingSpec {
   honor?: string
   address?: string
   landmark?: boolean
-  layoutConfidence?: 'archive' | 'abstract'
+  layoutConfidence?: 'archive' | 'abstract' | 'osm'
+  outline?: [number, number][] // v4：OSM 真实平面轮廓（本地坐标，未闭合）；缺省时按 footprint 盒体渲染
   tags: string[]
   floorGuide?: { level: number; name: string }[]
+}
+
+// v4：核心区内 OSM 配角建筑（灰色体量，不可交互）
+export interface ContextBuilding {
+  id: string
+  name?: string
+  outline: [number, number][]
+  height: number
+}
+
+// v4：OSM 绿地/公园多边形
+export interface GreeneryPatch {
+  id: string
+  kind: string
+  outline: [number, number][]
 }
 
 export interface Gate {
@@ -48,7 +64,7 @@ export interface Road {
 }
 
 export type WaterBody =
-  | { id: string; name: string; kind: 'lake'; center: [number, number]; radius: [number, number] }
+  | { id: string; name: string; kind: 'lake'; outline: [number, number][] }
   | { id: string; name: string; kind: 'river'; width: number; path: [number, number][] }
 
 export interface Plaza {
@@ -74,6 +90,8 @@ export interface WorldData {
   roads: Road[]
   water: WaterBody[]
   plazas: Plaza[]
+  contextBuildings: ContextBuilding[]
+  greenery: GreeneryPatch[]
   distantQuarters: DistantQuarter[]
   spokenAliases: Record<string, string>
   bounds: { west: number; east: number; north: number; south: number }

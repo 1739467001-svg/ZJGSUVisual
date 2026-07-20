@@ -3,8 +3,9 @@ import * as THREE from 'three'
 import { world } from '../../../data/world'
 
 // 地面沙盘底座：bounds 外扩一圈，1m 细网格 + 10m 粗网格，边缘微发光描边
-const SIZE_X = 1240
-const SIZE_Z = 1140
+// v4：尺寸直接取 world.bounds（OSM 实测范围 1770m × 910m）
+const SIZE_X = world.bounds.east - world.bounds.west
+const SIZE_Z = world.bounds.south - world.bounds.north
 const CX = (world.bounds.west + world.bounds.east) / 2
 const CZ = (world.bounds.north + world.bounds.south) / 2
 

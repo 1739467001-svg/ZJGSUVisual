@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { pulseState, tideOccupancy } from '../tides'
 import { powerKw, areaFactorOf } from '../energy'
-import { trafficOnRoads } from '../traffic'
+import { trafficOnRoads, roadRoleOf } from '../traffic'
 import { pulseAt, sampleDay } from '../engine'
 import { world } from '../../data/world'
 import { rooms } from '../../data/seedRooms'
@@ -56,7 +56,8 @@ describe('EnergyModel', () => {
 
   it('无面积楼宇按 footprint×floors 估算', () => {
     const bare = { ...b('juyuan'), area: undefined }
-    expect(areaFactorOf(bare)).toBeCloseTo((70 * 54 * 3) / 10000)
+    const juyuan = b('juyuan')
+    expect(areaFactorOf(bare)).toBeCloseTo((juyuan.footprint[0] * juyuan.footprint[1] * juyuan.floors) / 10000)
     expect(areaFactorOf(b('lib'))).toBeCloseTo(5.2)
   })
 })
@@ -65,15 +66,19 @@ describe('TrafficModel', () => {
   it('下课时教学区道路权重显著高于上课时', () => {
     const breakTraffic = trafficOnRoads(world, at(10, 35))
     const classTraffic = trafficOnRoads(world, at(10, 0))
-    expect(breakTraffic['rd-axis']).toBeGreaterThan(0.6)
-    expect(classTraffic['rd-axis']).toBeLessThan(0.3)
-    expect(breakTraffic['rd-axis']).toBeGreaterThan(classTraffic['rd-axis'] * 2)
+    // v4：道路角色按与楼实测距离分类（见 roadRoleOf），取一条教学角色道路断言
+    const teachingRoad = world.roads.find((r) => roadRoleOf(world, r) === 'teaching')
+    expect(teachingRoad).toBeDefined()
+    expect(breakTraffic[teachingRoad!.id]).toBeGreaterThan(0.6)
+    expect(classTraffic[teachingRoad!.id]).toBeLessThan(0.3)
+    expect(breakTraffic[teachingRoad!.id]).toBeGreaterThan(classTraffic[teachingRoad!.id] * 2)
   })
 
-  it('食堂窗期间环路道路高位', () => {
+  it('食堂窗期间食堂周边道路高位', () => {
     const lunch = trafficOnRoads(world, at(12, 0))
-    expect(lunch['rd-ring-n']).toBeGreaterThan(0.6)
-    expect(lunch['rd-ring-s']).toBeGreaterThan(0.6)
+    const canteenRoad = world.roads.find((r) => roadRoleOf(world, r) === 'canteen')
+    expect(canteenRoad).toBeDefined()
+    expect(lunch[canteenRoad!.id]).toBeGreaterThan(0.6)
   })
 })
 

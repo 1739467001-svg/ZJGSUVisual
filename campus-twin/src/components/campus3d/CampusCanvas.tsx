@@ -5,6 +5,7 @@ import { OrbitControls } from '@react-three/drei'
 import { EffectComposer, Bloom, Vignette } from '@react-three/postprocessing'
 import type { BloomEffect } from 'postprocessing'
 import { useCampusStore } from '../../store/campusStore'
+import { worldCenter } from '../../data/world'
 import { liveSky } from './liveSky'
 import { ClockBridge } from './ClockBridge'
 import { Ground } from './world/Ground'
@@ -15,6 +16,7 @@ import { Greenery } from './world/Greenery'
 import { LampPosts } from './world/LampPosts'
 import { DistantQuarters } from './world/DistantQuarters'
 import { BuildingLayer } from './buildings/BuildingLayer'
+import { ContextBuildings } from './buildings/ContextBuildings'
 import { CameraDirector } from './camera/CameraDirector'
 import { ScanBeam } from './effects/ScanBeam'
 import { PulseMarker } from './effects/PulseMarker'
@@ -72,7 +74,7 @@ export function CampusCanvas() {
     <Canvas
       dpr={quality === 'low' ? 1 : [1, 1.75]}
       // 首屏唤醒：镜头从 1700m 高空俯冲至总览位（CameraDirector damp 接管，约 2s 落位）
-      camera={{ position: [900, 1100, 900], fov: 42, near: 1, far: 7000 }}
+      camera={{ position: [worldCenter[0] + 900, 1100, worldCenter[1] + 900], fov: 42, near: 1, far: 7000 }}
       gl={{ antialias: true }}
       onPointerMissed={() => {
         selectBuilding(undefined)
@@ -87,6 +89,7 @@ export function CampusCanvas() {
       <Greenery />
       <LampPosts />
       <DistantQuarters />
+      <ContextBuildings />
       <BuildingLayer />
       <ScanBeam />
       <PulseMarker />
@@ -101,7 +104,7 @@ export function CampusCanvas() {
         enableDamping
         dampingFactor={0.08}
         minDistance={30}
-        maxDistance={1800}
+        maxDistance={2600}
         maxPolarAngle={Math.PI / 2.1}
       />
     </Canvas>

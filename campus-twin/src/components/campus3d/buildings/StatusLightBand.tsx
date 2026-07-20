@@ -5,6 +5,7 @@ import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js'
 import type { BuildingSpec } from '../../../types'
 import { useCampusStore } from '../../../store/campusStore'
 import { BAND_COLOR, resolveBandStatus } from '../../../lib/bandStatus'
+import { outlineRing } from '../../../lib/outline'
 import { liveFx } from '../liveFx'
 
 // 楼顶 0.4m 状态光带（规格 §9.3）：一圈 0.8m 宽环形带，2.6s 呼吸；
@@ -14,6 +15,8 @@ export function StatusLightBand({ b, occupancy, dimmed }: { b: BuildingSpec; occ
   const status = useCampusStore((s) => resolveBandStatus(s, b.id, occupancy))
 
   const ringGeo = useMemo(() => {
+    // v4：轮廓楼沿真实平面走闭合环；盒体楼保持四段盒拼环
+    if (b.outline?.length) return outlineRing(b.outline, b.position[0], b.position[1], 0.8)
     const t = 0.8
     const w = b.footprint[0] + 0.8
     const d = b.footprint[1] + 0.8
@@ -24,7 +27,7 @@ export function StatusLightBand({ b, occupancy, dimmed }: { b: BuildingSpec; occ
       new THREE.BoxGeometry(t, 0.4, d - 2 * t).translate(-(w - t) / 2, 0, 0),
     ]
     return mergeGeometries(parts, false)
-  }, [b.footprint])
+  }, [b.footprint, b.outline, b.position])
 
   useFrame(({ clock }) => {
     const mat = matRef.current

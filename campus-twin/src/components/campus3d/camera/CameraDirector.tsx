@@ -3,7 +3,7 @@ import * as THREE from 'three'
 import { useFrame, useThree } from '@react-three/fiber'
 import type { OrbitControls as OrbitControlsImpl } from 'three-stdlib'
 import type { Shot } from '../../../types'
-import { buildingById } from '../../../data/world'
+import { buildingById, worldCenter } from '../../../data/world'
 import { rooms } from '../../../data/seedRooms'
 import { roomWorldPos } from '../../../lib/roomPos'
 import { buildRouteCurve } from '../../../lib/routeCurve'
@@ -133,11 +133,11 @@ function desiredShot(
     return
   }
   if (shot?.kind === 'topdown') {
-    TARGET.set(0, 0, 0)
-    POS.set(1, 1100, 1)
+    TARGET.set(worldCenter[0], 0, worldCenter[1])
+    POS.set(worldCenter[0] + 1, 1300, worldCenter[1] + 1)
     return
   }
-  // overview：780m 东南 45° 俯视，呼吸浮动 ±6m/8s
-  TARGET.set(0, 0, 0)
-  POS.set(452, 447 + Math.sin((t * Math.PI * 2) / 8) * 6, 452)
+  // overview：场景中心东南 45° 俯视（v4 随 OSM bounds 定锚），呼吸浮动 ±6m/8s
+  TARGET.set(worldCenter[0], 0, worldCenter[1])
+  POS.set(worldCenter[0] + 620, 500 + Math.sin((t * Math.PI * 2) / 8) * 6, worldCenter[1] + 620)
 }

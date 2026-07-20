@@ -5,6 +5,7 @@ import { useFrame } from '@react-three/fiber'
 import type { BuildingSpec } from '../../../types'
 import { useCampusStore, type CampusState } from '../../../store/campusStore'
 import { deviceLabel } from '../../../lib/format'
+import { extrudeOutline } from '../../../lib/outline'
 
 type Drill = CampusState['drill']
 
@@ -25,9 +26,14 @@ export function DrillSlabs({
   const roomRef = useRef<THREE.Mesh>(null)
   const lift = useRef(0)
 
+  const hasOutline = !!b.outline?.length
+  // v4：轮廓楼剖层 = 真实平面薄板（底面 y=0）；盒体楼 = 中心几何盒
   const slabGeo = useMemo(
-    () => new THREE.BoxGeometry(b.footprint[0], b.floorHeight, b.footprint[1]),
-    [b.footprint, b.floorHeight],
+    () =>
+      hasOutline
+        ? extrudeOutline(b.outline!, b.position[0], b.position[1], b.floorHeight)
+        : new THREE.BoxGeometry(b.footprint[0], b.floorHeight, b.footprint[1]),
+    [hasOutline, b.outline, b.position, b.footprint, b.floorHeight],
   )
   const slabEdges = useMemo(() => new THREE.EdgesGeometry(slabGeo), [slabGeo])
   const slabMats = useMemo(
@@ -52,7 +58,8 @@ export function DrillSlabs({
     if (g) {
       g.visible = e > 1.02
       g.children.forEach((slab, i) => {
-        slab.position.y = i * b.floorHeight * e + b.floorHeight / 2
+        // 轮廓薄板底面在 y=0；盒体板为中心几何需抬半高
+        slab.position.y = i * b.floorHeight * e + (hasOutline ? 0 : b.floorHeight / 2)
       })
     }
     // Lv3：房间方块从楼层中抬出
