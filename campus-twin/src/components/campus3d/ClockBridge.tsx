@@ -55,7 +55,7 @@ export function ClockBridge() {
       liveFx.traffic = traffic
       useCampusStore.setState((cur) => ({
         clock: { ...cur.clock, virtualTs: iso },
-        snapshot: pulseAt(cur.world, cur.rooms, cur.tickets, t),
+        snapshot: pulseAt(cur.world, cur.rooms, cur.tickets, t, cur.bookings),
         traffic,
       }))
     }

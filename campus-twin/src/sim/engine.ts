@@ -1,4 +1,5 @@
-import type { BuildingPulse, CampusSnapshot, Room, Ticket, WorldData } from '../types'
+import type { Booking, BuildingPulse, CampusSnapshot, Room, Ticket, WorldData } from '../types'
+import { endPlus, overlaps, toHHMM } from '../lib/time'
 import { minutesOf, tideOccupancy } from './tides'
 import { areaFactorOf, powerKw } from './energy'
 import { toLocalIso } from './clock'
@@ -20,8 +21,15 @@ function capacityOf(rooms: Room[]): { caps: Map<string, number>; roomBuilding: M
 }
 
 /** 模拟引擎主接口（规格 §7）：同一 t 输入必然得到同一输出 */
-export function pulseAt(world: WorldData, rooms: Room[], tickets: Ticket[], t: Date): CampusSnapshot {
+export function pulseAt(
+  world: WorldData,
+  rooms: Room[],
+  tickets: Ticket[],
+  t: Date,
+  bookings: Booking[] = [],
+): CampusSnapshot {
   const m = minutesOf(t)
+  const now = toHHMM(Math.floor(m))
   const { caps, roomBuilding } = capacityOf(rooms)
   const pulses: Record<string, BuildingPulse> = {}
   let totalHeadcount = 0
@@ -29,7 +37,17 @@ export function pulseAt(world: WorldData, rooms: Room[], tickets: Ticket[], t: D
   let occSum = 0
   let occN = 0
   for (const b of world.buildings) {
-    const occupancy = tideOccupancy(b, m)
+    // 占用 = TideModel + 业务占用加成（规格 §5.1 预约后 KPI 联动）：
+    // occupancy = clamp(tide + busyRatio × 0.5, 0, 1)
+    // busyRatio = 楼内 busy 房间或当前时刻有进行中预约的房间占比；repair 房间不计入
+    const tide = tideOccupancy(b, m)
+    const bRooms = rooms.filter((r) => r.buildingId === b.id)
+    const busyN = bRooms.filter(
+      (r) =>
+        r.status === 'busy' ||
+        bookings.some((bk) => bk.roomId === r.id && bk.status === 'ok' && overlaps(bk.start, bk.end, now, endPlus(now, 1))),
+    ).length
+    const occupancy = Math.min(1, Math.max(0.02, tide + (bRooms.length > 0 ? (busyN / bRooms.length) * 0.5 : 0)))
     const cap = caps.get(b.id) ?? 0
     const headcount = Math.round(occupancy * cap)
     const kw = powerKw(b.kind, occupancy, areaFactorOf(b))

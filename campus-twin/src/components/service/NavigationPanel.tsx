@@ -43,7 +43,9 @@ export function NavigationPanel() {
             </div>
           ))}
         </div>
-        <p className="mt-3 text-[11px] text-slate-400">无障碍备选：全程为平坦路网，无坡度路段</p>
+        <p className="mt-3 text-[11px] leading-4 text-slate-400">
+          无障碍备选：演示版暂未建模坡度数据，接口已预留（route.accessible）
+        </p>
       </div>
     )
   }

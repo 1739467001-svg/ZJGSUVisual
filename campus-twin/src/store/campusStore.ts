@@ -51,6 +51,7 @@ export interface CampusState {
   drill: { level: 0 | 1 | 2 | 3; buildingId?: string; floor?: number; roomId?: string }
   cameraShot?: Shot
   quality: 'high' | 'low'
+  role: 'visitor' | 'student' | 'admin'
 
   // 阶段 2 业务结果（供右栏面板渲染）
   candidates: RoomCandidate[] | null
@@ -67,6 +68,7 @@ export interface CampusState {
   setVirtualTs: (iso: string) => void
   setCameraShot: (shot?: Shot) => void
   setQuality: (q: CampusState['quality']) => void
+  setRole: (r: CampusState['role']) => void
   selectBuilding: (id?: string) => void
   selectRoom: (id?: string) => void
 
@@ -117,6 +119,7 @@ export const useCampusStore = create<CampusState>((set, get) => ({
   sceneNonce: 0,
   drill: { level: 0 },
   quality: 'high',
+  role: 'student',
 
   candidates: null,
   repairDraft: null,
@@ -149,12 +152,18 @@ export const useCampusStore = create<CampusState>((set, get) => ({
     simClock.setTime(t)
     set((s) => ({
       clock: { ...s.clock, virtualTs: iso },
-      snapshot: pulseAt(s.world, s.rooms, s.tickets, t),
+      snapshot: pulseAt(s.world, s.rooms, s.tickets, t, s.bookings),
       traffic: trafficOnRoads(s.world, t),
     }))
   },
   setCameraShot: (shot) => set({ cameraShot: shot }),
   setQuality: (q) => set({ quality: q }),
+  // 角色只做视图层权限（态势面板）；Agent 指令流不受限——路演安全设计
+  setRole: (r) =>
+    set((s) => ({
+      role: r,
+      activePanel: r === 'visitor' && s.activePanel === 'admin' ? 'overview' : s.activePanel,
+    })),
   selectBuilding: (id) => set({ selectedBuildingId: id }),
   selectRoom: (id) => set({ selectedRoomId: id }),
 
@@ -227,6 +236,14 @@ export const useCampusStore = create<CampusState>((set, get) => ({
       // 任务闭环：清掉候选高亮，该楼光带回落为 busy（沙盘可见状态联动）
       highlightedRoomIds: [],
       rooms: cur.rooms.map((r) => (r.id === roomId ? { ...r, status: 'busy' as const } : r)),
+      // 即时重算 snapshot（不等 ClockBridge 1Hz）：KPI/热力/标签即刻联动（规格 §5.1）
+      snapshot: pulseAt(
+        cur.world,
+        cur.rooms.map((r) => (r.id === roomId ? { ...r, status: 'busy' as const } : r)),
+        cur.tickets,
+        simClock.now(),
+        [...cur.bookings, booking],
+      ),
       messages: [
         ...cur.messages,
         agentMessage(`预约成功：${roomLabel(room)}，${start}–${end}，预约号 ${booking.id}。`),

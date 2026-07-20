@@ -1,12 +1,18 @@
 import { Clock } from 'lucide-react'
-import { useCampusStore } from '../../store/campusStore'
+import { useCampusStore, type CampusState } from '../../store/campusStore'
 
 const VALUE_TAGS = ['N系统→1入口', '10秒办事', '可复制到社区·园区·医院·政务', '新生·访客·无障碍友好']
-const ROLES = ['访客', '学生', '管理员'] as const
+const ROLES: { id: CampusState['role']; label: string }[] = [
+  { id: 'visitor', label: '访客' },
+  { id: 'student', label: '学生' },
+  { id: 'admin', label: '管理员' },
+]
 const WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'] as const
 
 export function TopBar() {
   const virtualTs = useCampusStore((s) => s.clock.virtualTs)
+  const role = useCampusStore((s) => s.role)
+  const setRole = useCampusStore((s) => s.setRole)
   const d = new Date(virtualTs)
   const hhmm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`
 
@@ -43,19 +49,20 @@ export function TopBar() {
             </span>
           ))}
         </div>
-        {/* 角色切换占位，权限视图阶段 2 接入 */}
+        {/* 角色切换：访客隐藏态势面板（视图层）；Agent 指令流不受限 */}
         <div className="flex rounded-md border border-slate-200 p-0.5 text-[11px]">
           {ROLES.map((r) => (
             <button
-              key={r}
+              key={r.id}
               type="button"
+              onClick={() => setRole(r.id)}
               className={
-                r === '学生'
+                role === r.id
                   ? 'rounded bg-brand px-2 py-0.5 text-white'
-                  : 'rounded px-2 py-0.5 text-slate-500'
+                  : 'rounded px-2 py-0.5 text-slate-500 hover:text-slate-700'
               }
             >
-              {r}
+              {r.label}
             </button>
           ))}
         </div>

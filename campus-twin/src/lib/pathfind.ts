@@ -422,6 +422,7 @@ export function findRoute(
     distanceM: Math.round(distanceM),
     walkMin: Math.round((distanceM / WALK_M_PER_MIN) * 10) / 10,
     segments,
+    // 无障碍：底稿路网无坡度字段，当前恒 true；坡度数据接入后按绕行坡度路段重算（接口预留）
     accessible: true,
   }
 }
