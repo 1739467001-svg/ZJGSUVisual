@@ -142,6 +142,40 @@ try {
     console.log(`角色[${t}] 点击后 activePanel:`, await store('activePanel'), '(前:', before + ')')
   }
 
+  // 6. 侧栏折叠（Part A）：折叠 → 窄条 < 60px 且中栏变宽 → 展开还原；右栏窄条图标点击即展开切 tab
+  console.log('\n— 侧栏折叠 —')
+  const widths = () =>
+    page.evaluate(() => {
+      const asides = [...document.querySelectorAll('aside')]
+      const main = document.querySelector('main')
+      return { left: asides[0]?.getBoundingClientRect().width, right: asides[1]?.getBoundingClientRect().width, mid: main?.getBoundingClientRect().width }
+    })
+  const clickTitle = (title) =>
+    page.evaluate((t) => {
+      const btn = [...document.querySelectorAll('button')].find((b) => b.title === t)
+      if (btn) { btn.dispatchEvent(new MouseEvent('click', { bubbles: true })); return true }
+      return false
+    }, title)
+  const w0 = await widths()
+  console.log('点击[收起指挥台]:', await clickTitle('收起指挥台'))
+  await sleep(600)
+  const w1 = await widths()
+  console.log('左栏折叠:', w1.left < 60 && w1.mid > w0.mid ? `✓ (${Math.round(w0.left)}→${Math.round(w1.left)}, 中栏 ${Math.round(w0.mid)}→${Math.round(w1.mid)})` : `✗ (${JSON.stringify(w1)})`)
+  console.log('点击[展开指挥台]:', await clickTitle('展开指挥台'))
+  await sleep(600)
+  const w2 = await widths()
+  console.log('左栏还原:', Math.abs(w2.left - w0.left) < 2 ? '✓' : `✗ (${Math.round(w2.left)})`)
+  console.log('点击[收起服务台]:', await clickTitle('收起服务台'))
+  await sleep(600)
+  const w3 = await widths()
+  console.log('右栏折叠:', w3.right < 60 ? `✓ (${Math.round(w3.right)})` : `✗ (${Math.round(w3.right)})`)
+  // 窄条里点「导航」图标 → 展开并切到 navigation
+  console.log('窄条点击[导航]:', await clickTitle('导航'))
+  await sleep(600)
+  const w4 = await widths()
+  const ap = await store('activePanel')
+  console.log('右栏展开且切到导航:', w4.right > 300 && ap === 'navigation' ? '✓' : `✗ (w=${Math.round(w4.right)}, panel=${ap})`)
+
   await browser.close()
 } finally {
   server.kill()

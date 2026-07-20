@@ -4,13 +4,21 @@ import { ServiceDesk } from './ServiceDesk'
 import { BottomBar } from './BottomBar'
 import { CampusCanvas } from '../campus3d/CampusCanvas'
 import { Breadcrumb } from '../campus3d/Breadcrumb'
+import { useCampusStore } from '../../store/campusStore'
 
 // 规格 §4 信息架构：顶栏 / 左栏指挥台 / 中栏沙盘 / 右栏服务台 / 底栏时间轴
+// 左右栏可折叠成 44px 窄条（grid 列过渡动画，Canvas 随容器自适应）
 export function AppShell() {
+  const collapsed = useCampusStore((s) => s.panelCollapsed)
+  const gridTemplateColumns = `${collapsed.left ? '44px' : '300px'} minmax(0, 1fr) ${collapsed.right ? '44px' : '348px'}`
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-panel">
       <TopBar />
-      <div className="grid min-h-0 flex-1 grid-cols-[300px_minmax(0,1fr)_348px]">
+      <div
+        className="grid min-h-0 flex-1 transition-[grid-template-columns] duration-300 ease-out"
+        style={{ gridTemplateColumns }}
+      >
         <CommandPanel />
         <main className="relative min-w-0 bg-ink">
           <CampusCanvas />

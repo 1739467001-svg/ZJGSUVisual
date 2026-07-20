@@ -35,7 +35,16 @@ function PostFX() {
   if (quality === 'low') return null
   return (
     <EffectComposer>
-      <Bloom ref={bloomRef} luminanceThreshold={0.6} luminanceSmoothing={0.2} intensity={0.35} mipmapBlur />
+      <Bloom
+        // 回调 ref：对象 ref 会被 postprocessing 内部 JSON.stringify(props) 序列化，挂载后 current 含 THREE 循环引用导致崩溃
+        ref={(effect: BloomEffect | null) => {
+          bloomRef.current = effect
+        }}
+        luminanceThreshold={0.6}
+        luminanceSmoothing={0.2}
+        intensity={0.35}
+        mipmapBlur
+      />
       <Vignette offset={0.25} darkness={0.35} />
     </EffectComposer>
   )

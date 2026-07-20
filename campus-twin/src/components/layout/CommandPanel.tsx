@@ -1,4 +1,4 @@
-import { Activity, Navigation, Search, Wrench } from 'lucide-react'
+import { Activity, Navigation, PanelLeftClose, PanelLeftOpen, Search, Wrench } from 'lucide-react'
 import { DEMO_SCENARIOS } from '../../data/demoScenarios'
 import { useCampusStore } from '../../store/campusStore'
 import { ChatInput } from '../agent/ChatInput'
@@ -10,12 +10,40 @@ const CHAIN_ICON = { booking: Search, repair: Wrench, overview: Activity, naviga
 export function CommandPanel() {
   const running = useCampusStore((s) => s.running)
   const runDemoScript = useCampusStore((s) => s.runDemoScript)
+  const collapsed = useCampusStore((s) => s.panelCollapsed.left)
+  const togglePanel = useCampusStore((s) => s.togglePanel)
+
+  // 折叠态：44px 窄条，仅保留展开按钮
+  if (collapsed) {
+    return (
+      <aside className="flex min-h-0 flex-col items-center border-r border-slate-200 bg-panel py-2">
+        <button
+          type="button"
+          title="展开指挥台"
+          onClick={() => togglePanel('left')}
+          className="rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+        >
+          <PanelLeftOpen size={15} />
+        </button>
+      </aside>
+    )
+  }
 
   return (
     <aside className="flex min-h-0 flex-col gap-3 overflow-y-auto border-r border-slate-200 bg-panel p-4">
-      <div>
-        <h1 className="text-sm font-semibold text-slate-900">一句话指挥台</h1>
-        <p className="mt-0.5 text-[11px] text-slate-400">自然语言调度整个校园 · 左栏发起</p>
+      <div className="flex items-start justify-between gap-2">
+        <div>
+          <h1 className="text-sm font-semibold text-slate-900">一句话指挥台</h1>
+          <p className="mt-0.5 text-[11px] text-slate-400">自然语言调度整个校园 · 左栏发起</p>
+        </div>
+        <button
+          type="button"
+          title="收起指挥台"
+          onClick={() => togglePanel('left')}
+          className="mt-0.5 shrink-0 rounded-md p-1 text-slate-300 hover:bg-slate-100 hover:text-slate-500"
+        >
+          <PanelLeftClose size={15} />
+        </button>
       </div>
 
       <ChatInput />

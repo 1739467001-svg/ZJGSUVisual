@@ -52,6 +52,7 @@ export interface CampusState {
   cameraShot?: Shot
   quality: 'high' | 'low'
   role: 'visitor' | 'student' | 'admin'
+  panelCollapsed: { left: boolean; right: boolean } // 左右侧栏折叠（视图层）
 
   // 阶段 2 业务结果（供右栏面板渲染）
   candidates: RoomCandidate[] | null
@@ -69,6 +70,7 @@ export interface CampusState {
   setCameraShot: (shot?: Shot) => void
   setQuality: (q: CampusState['quality']) => void
   setRole: (r: CampusState['role']) => void
+  togglePanel: (side: 'left' | 'right') => void
   selectBuilding: (id?: string) => void
   selectRoom: (id?: string) => void
 
@@ -120,6 +122,7 @@ export const useCampusStore = create<CampusState>((set, get) => ({
   drill: { level: 0 },
   quality: 'high',
   role: 'student',
+  panelCollapsed: { left: false, right: false },
 
   candidates: null,
   repairDraft: null,
@@ -166,6 +169,8 @@ export const useCampusStore = create<CampusState>((set, get) => ({
     })),
   selectBuilding: (id) => set({ selectedBuildingId: id }),
   selectRoom: (id) => set({ selectedRoomId: id }),
+  togglePanel: (side) =>
+    set((s) => ({ panelCollapsed: { ...s.panelCollapsed, [side]: !s.panelCollapsed[side] } })),
 
   submitCommand: async (text, opts) => {
     const s = get()
