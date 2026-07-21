@@ -28,7 +28,11 @@ export function ServiceDesk() {
   const role = useCampusStore((s) => s.role)
   const collapsed = useCampusStore((s) => s.panelCollapsed.right)
   const togglePanel = useCampusStore((s) => s.togglePanel)
+  // 新工单推送：管理端「态势」tab 红点计数（未闭环工单数）
+  const activeTickets = useCampusStore((s) => s.tickets.filter((t) => t.status !== 'done').length)
   const Panel = PANELS[activePanel]
+  // 态势面板 = 教师/领导视图，学生与访客均不可点（Agent 指令流不受角色限制——路演安全）
+  const adminLocked = role !== 'admin'
 
   // 折叠态：44px 窄条，竖排 tab 图标——点击即展开并切到该面板
   if (collapsed) {
@@ -43,14 +47,14 @@ export function ServiceDesk() {
           <PanelRightOpen size={15} />
         </button>
         {TABS.map((t) => {
-          const disabled = t.id === 'admin' && role === 'visitor'
+          const disabled = t.id === 'admin' && adminLocked
           const Icon = t.icon
           return (
             <button
               key={t.id}
               type="button"
               disabled={disabled}
-              title={disabled ? `${t.label}（管理员权限视图）` : t.label}
+              title={disabled ? `${t.label}（教师/管理员权限视图）` : t.label}
               onClick={() => {
                 setActivePanel(t.id)
                 togglePanel('right')
@@ -63,7 +67,12 @@ export function ServiceDesk() {
                     : 'rounded-md p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600'
               }
             >
-              <Icon size={15} />
+              <span className="relative inline-flex">
+                <Icon size={15} />
+                {t.id === 'admin' && !adminLocked && activeTickets > 0 && (
+                  <span className="absolute -right-1.5 -top-1.5 h-2 w-2 rounded-full bg-danger" />
+                )}
+              </span>
             </button>
           )
         })}
@@ -75,14 +84,13 @@ export function ServiceDesk() {
     <aside className="flex min-h-0 flex-col border-l border-slate-200 bg-panel">
       <div className="flex shrink-0 gap-1 border-b border-slate-200 px-3 pt-2">
         {TABS.map((t) => {
-          // 访客隐藏态势面板（视图层权限）；Agent 指令流不受角色限制（路演安全）
-          const disabled = t.id === 'admin' && role === 'visitor'
+          const disabled = t.id === 'admin' && adminLocked
           return (
             <button
               key={t.id}
               type="button"
               disabled={disabled}
-              title={disabled ? '管理员权限视图' : undefined}
+              title={disabled ? '教师/管理员权限视图' : undefined}
               onClick={() => setActivePanel(t.id)}
               className={
                 disabled
@@ -92,7 +100,14 @@ export function ServiceDesk() {
                     : 'px-3 py-1.5 text-xs text-slate-400 hover:text-slate-600'
               }
             >
-              {t.label}
+              <span className="relative inline-flex items-center">
+                {t.label}
+                {t.id === 'admin' && !adminLocked && activeTickets > 0 && (
+                  <span className="absolute -right-3 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-danger px-1 text-[9px] font-semibold text-white">
+                    {activeTickets}
+                  </span>
+                )}
+              </span>
             </button>
           )
         })}

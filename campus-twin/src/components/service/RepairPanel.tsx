@@ -14,6 +14,7 @@ export function RepairPanel() {
   const draft = useCampusStore((s) => s.repairDraft)
   const tickets = useCampusStore((s) => s.tickets)
   const rooms = useCampusStore((s) => s.rooms)
+  const role = useCampusStore((s) => s.role)
   const createTicket = useCampusStore((s) => s.createTicket)
   const advanceTicket = useCampusStore((s) => s.advanceTicket)
   const [desc, setDesc] = useState('')
@@ -64,9 +65,10 @@ export function RepairPanel() {
         </p>
       )}
 
-      {tickets.length > 0 && (
+      {tickets.length > 0 && role === 'admin' && (
         <>
-          <p className="mb-2 mt-5 text-[11px] font-medium tracking-wide text-slate-400">工单 · {tickets.length}</p>
+          {/* 管理端（教师/领导）：全校工单队列 + 受理/办结（审批操作仅管理端可见） */}
+          <p className="mb-2 mt-5 text-[11px] font-medium tracking-wide text-slate-400">工单队列 · {tickets.length}</p>
           <div className="flex flex-col gap-2">
             {tickets.map((t) => {
               const room = rooms.find((r) => r.id === t.roomId)
@@ -93,6 +95,33 @@ export function RepairPanel() {
                       </button>
                     )}
                   </div>
+                </div>
+              )
+            })}
+          </div>
+        </>
+      )}
+
+      {tickets.length > 0 && role !== 'admin' && (
+        <>
+          {/* 学生/访客端：只看到自己提交的工单进度，受理审批不可见（已推送管理端） */}
+          <p className="mb-2 mt-5 text-[11px] font-medium tracking-wide text-slate-400">我的报修 · {tickets.length}</p>
+          <div className="flex flex-col gap-2">
+            {tickets.map((t) => {
+              const room = rooms.find((r) => r.id === t.roomId)
+              const meta = STATUS_META[t.status]
+              return (
+                <div key={t.id} className="rounded-lg border border-slate-200 bg-white p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] font-semibold tabular-nums text-slate-900">{t.id}</span>
+                    <span className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${meta.cls}`}>{meta.label}</span>
+                  </div>
+                  <p className="mt-1 text-[13px] text-slate-700">
+                    {room ? `${buildingName(room.buildingId)} ${room.name}` : t.roomId} · {t.desc}
+                  </p>
+                  <p className="mt-2 text-[11px] leading-4 text-slate-400">
+                    {t.status === 'done' ? '维修已完成' : '工单已推送至后勤管理端，处理进度自动更新'}
+                  </p>
                 </div>
               )
             })}

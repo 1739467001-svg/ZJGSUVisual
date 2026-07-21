@@ -49,7 +49,7 @@ export function TopBar() {
             </span>
           ))}
         </div>
-        {/* 角色切换：访客隐藏态势面板（视图层）；Agent 指令流不受限 */}
+        {/* 角色切换：态势面板 = 教师/管理视图（学生与访客不可点）；Agent 指令流不受限 */}
         <div className="flex rounded-md border border-slate-200 p-0.5 text-[11px]">
           {ROLES.map((r) => (
             <button

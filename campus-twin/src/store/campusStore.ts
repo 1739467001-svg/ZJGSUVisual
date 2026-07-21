@@ -161,11 +161,11 @@ export const useCampusStore = create<CampusState>((set, get) => ({
   },
   setCameraShot: (shot) => set({ cameraShot: shot }),
   setQuality: (q) => set({ quality: q }),
-  // 角色只做视图层权限（态势面板）；Agent 指令流不受限——路演安全设计
+  // 角色只做视图层权限（态势面板 = 教师/管理视图，学生与访客不可见）；Agent 指令流不受限——路演安全设计
   setRole: (r) =>
     set((s) => ({
       role: r,
-      activePanel: r === 'visitor' && s.activePanel === 'admin' ? 'overview' : s.activePanel,
+      activePanel: r !== 'admin' && s.activePanel === 'admin' ? 'overview' : s.activePanel,
     })),
   selectBuilding: (id) => set({ selectedBuildingId: id }),
   selectRoom: (id) => set({ selectedRoomId: id }),
@@ -280,7 +280,7 @@ export const useCampusStore = create<CampusState>((set, get) => ({
       devices: cur.devices.map((d) => (d.id === deviceId ? { ...d, status: 'fault' as const } : d)),
       messages: [
         ...cur.messages,
-        agentMessage(`工单 ${ticket.id} 已创建：${room ? roomLabel(room) : roomId}，${desc}（待受理）。`),
+        agentMessage(`工单 ${ticket.id} 已创建：${room ? roomLabel(room) : roomId}，${desc}（待受理，已推送至管理端）。`),
       ],
     }))
     return ticket

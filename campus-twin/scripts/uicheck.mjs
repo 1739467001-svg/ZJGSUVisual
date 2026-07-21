@@ -135,11 +135,17 @@ try {
 
   // 5. 角色切换/价值标签/其他顶部控件
   console.log('\n— 顶部控件 —')
+  const clickText = (txt) =>
+    page.evaluate((t) => {
+      const btn = [...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === t)
+      if (btn) { btn.dispatchEvent(new MouseEvent('click', { bubbles: true })); return true }
+      return false
+    }, txt)
   for (const t of ['访客', '学生', '管理员']) {
     const before = await store('activePanel')
-    await clickInSection('CampusTwin', t)
+    await clickText(t)
     await sleep(300)
-    console.log(`角色[${t}] 点击后 activePanel:`, await store('activePanel'), '(前:', before + ')')
+    console.log(`角色[${t}] 点击后 activePanel:`, await store('activePanel'), 'role:', await store('role'), '(前:', before + ')')
   }
 
   // 6. 侧栏折叠（Part A）：折叠 → 窄条 < 60px 且中栏变宽 → 展开还原；右栏窄条图标点击即展开切 tab
@@ -175,6 +181,44 @@ try {
   const w4 = await widths()
   const ap = await store('activePanel')
   console.log('右栏展开且切到导航:', w4.right > 300 && ap === 'navigation' ? '✓' : `✗ (w=${Math.round(w4.right)}, panel=${ap})`)
+
+  // 7. 角色数据权限（批次 4）：学生端只见「我的报修」进度，受理/办结审批仅管理端可见
+  console.log('\n— 角色数据权限 —')
+  await clickText('学生')
+  await sleep(300)
+  await page.evaluate(`window.__STORE__.getState().setActivePanel('repair')`)
+  await sleep(400)
+  const noAccept = await page.evaluate(
+    () => ![...document.querySelectorAll('button')].some((b) => b.textContent?.trim() === '受理'),
+  )
+  console.log('学生端无受理/办结按钮:', noAccept ? '✓' : '✗')
+  const mineLabel = await page.evaluate(() =>
+    [...document.querySelectorAll('p')].some((e) => e.textContent?.trim().startsWith('我的报修')),
+  )
+  console.log('学生端显示「我的报修」:', mineLabel ? '✓' : '✗')
+  const adminTabDisabled = await page.evaluate(
+    () => [...document.querySelectorAll('button')].find((b) => b.textContent?.trim() === '态势')?.disabled,
+  )
+  console.log('学生端态势 tab 禁用:', adminTabDisabled ? '✓' : '✗')
+  await clickText('管理员')
+  await sleep(300)
+  await page.evaluate(`window.__STORE__.getState().setActivePanel('repair')`)
+  await sleep(400)
+  const hasAccept = await page.evaluate(() =>
+    [...document.querySelectorAll('button')].some((b) => b.textContent?.trim() === '受理'),
+  )
+  console.log('管理端可见受理按钮:', hasAccept ? '✓' : '✗')
+  const badgeText = await page.evaluate(
+    () => [...document.querySelectorAll('button')].find((b) => b.textContent?.trim().startsWith('态势'))?.querySelector('.bg-danger')?.textContent ?? null,
+  )
+  console.log('管理端态势红点计数:', badgeText !== null ? `✓ (${badgeText})` : '✗ 无红点')
+  const accepted = await page.evaluate(() => {
+    const b = [...document.querySelectorAll('button')].find((x) => x.textContent?.trim() === '受理')
+    if (b) { b.dispatchEvent(new MouseEvent('click', { bubbles: true })); return true }
+    return false
+  })
+  await sleep(400)
+  console.log('管理端点击受理 → 工单 doing:', accepted && (await store('tickets[0].status')) === 'doing' ? '✓' : `✗ (${await store('tickets[0].status')})`)
 
   await browser.close()
 } finally {
