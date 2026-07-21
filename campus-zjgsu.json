@@ -13,7 +13,7 @@
     ],
     "layoutNote": "v4：楼宇位置/轮廓、道路、水系、绿地来自 OpenStreetMap 实测（layoutConfidence: 'osm'）；面积/层数仍为官方档案。contextBuildings 为核心区内无名/配角建筑灰色体量（不可交互）。distantQuarters 退役——生活区已由真实宿舍楼体量取代。",
     "demoDisclaimer": "演示数据，结构可替换为真实系统数据",
-    "generatedAt": "2026-07-20"
+    "generatedAt": "2026-07-21"
   },
   "bounds": {
     "west": -1130,
@@ -2335,7 +2335,7 @@
     },
     {
       "id": "osm-190533672",
-      "name": "",
+      "name": "中央礼仪轴",
       "kind": "main",
       "width": 8,
       "path": [
@@ -4191,7 +4191,7 @@
     },
     {
       "id": "osm-545969372",
-      "name": "",
+      "name": "文体路",
       "kind": "main",
       "width": 8,
       "path": [
@@ -5055,7 +5055,7 @@
     },
     {
       "id": "osm-560463557",
-      "name": "",
+      "name": "馆前环路",
       "kind": "minor",
       "width": 4,
       "path": [
@@ -5227,7 +5227,7 @@
     },
     {
       "id": "osm-560463558",
-      "name": "",
+      "name": "馆前环路",
       "kind": "minor",
       "width": 4,
       "path": [
@@ -7003,7 +7003,7 @@
     },
     {
       "id": "osm-563511797",
-      "name": "",
+      "name": "文体路",
       "kind": "main",
       "width": 8,
       "path": [
@@ -7543,7 +7543,7 @@
     },
     {
       "id": "osm-563511808",
-      "name": "",
+      "name": "求真路",
       "kind": "main",
       "width": 8,
       "path": [
@@ -8027,7 +8027,7 @@
     },
     {
       "id": "osm-563515427",
-      "name": "",
+      "name": "学院西路",
       "kind": "main",
       "width": 8,
       "path": [
@@ -11339,7 +11339,7 @@
     },
     {
       "id": "osm-598249128",
-      "name": "",
+      "name": "金沙港环路",
       "kind": "main",
       "width": 8,
       "path": [
@@ -11771,7 +11771,7 @@
     },
     {
       "id": "osm-649398388",
-      "name": "",
+      "name": "东环路",
       "kind": "main",
       "width": 8,
       "path": [
@@ -14251,7 +14251,7 @@
     },
     {
       "id": "osm-1336468209",
-      "name": "",
+      "name": "西环路",
       "kind": "minor",
       "width": 4,
       "path": [

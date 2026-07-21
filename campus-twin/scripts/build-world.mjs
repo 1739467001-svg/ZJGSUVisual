@@ -133,6 +133,19 @@ const plazas = [
 ]
 
 // ---------- roads/water/greenery：核心 + 80m 裁剪（几何保持原样） ----------
+// 路名 patch：OSM 未命名的校园主干/环路按语义补名（旧底稿语义锚点延续；确认过的主路才补，存疑不补）
+const ROAD_NAME_PATCH = {
+  'osm-190533672': '中央礼仪轴', // 正门 → 图书馆的南北主轴步道（607m 曲径）
+  'osm-563511808': '求真路', // 教学区纵路（行云苑/教学楼群之间）
+  'osm-560463557': '馆前环路', // 图书馆前广场环道（西半）
+  'osm-560463558': '馆前环路', // 图书馆前广场环道（东半）
+  'osm-649398388': '东环路', // 校区东侧纵干（文体中心方向）
+  'osm-1336468209': '西环路', // 西北学院区环道
+  'osm-598249128': '金沙港环路', // 金沙港生活区内部环道
+  'osm-563515427': '学院西路', // 西区学院楼群横路
+  'osm-563511797': '文体路', // 文体中心东侧
+  'osm-545969372': '文体路', // 文体中心南侧
+}
 const clipLines = (items, pad = 80) =>
   items.filter((it) => (it.path ?? []).some(([x, z]) => inCore(x, z, pad)))
 const clipPolys = (items, pad = 80) =>
@@ -140,7 +153,7 @@ const clipPolys = (items, pad = 80) =>
     const [x0, z0, x1, z1] = bboxOf(it.outline)
     return x1 >= core.west - pad && x0 <= core.east + pad && z1 >= core.north - pad && z0 <= core.south + pad
   })
-const roads = clipLines(v2.roads)
+const roads = clipLines(v2.roads).map((r) => (ROAD_NAME_PATCH[r.id] ? { ...r, name: ROAD_NAME_PATCH[r.id] } : r))
 const water = clipPolys(v2.water.filter((w) => w.outline)).concat(clipLines(v2.water.filter((w) => w.path)))
 const greenery = clipPolys(v2.greenery)
 

@@ -17,6 +17,7 @@ import { LampPosts } from './world/LampPosts'
 import { DistantQuarters } from './world/DistantQuarters'
 import { BuildingLayer } from './buildings/BuildingLayer'
 import { ContextBuildings } from './buildings/ContextBuildings'
+import { ContextWindows } from './buildings/ContextWindows'
 import { CameraDirector } from './camera/CameraDirector'
 import { ScanBeam } from './effects/ScanBeam'
 import { PulseMarker } from './effects/PulseMarker'
@@ -91,6 +92,7 @@ export function CampusCanvas() {
       <LampPosts />
       <DistantQuarters />
       <ContextBuildings />
+      <ContextWindows />
       <BuildingLayer />
       <ScanBeam />
       <PulseMarker />
