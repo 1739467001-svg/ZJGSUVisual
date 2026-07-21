@@ -6,6 +6,7 @@ import type { BuildingSpec } from '../../../types'
 import { useCampusStore, type CampusState } from '../../../store/campusStore'
 import { deviceLabel } from '../../../lib/format'
 import { extrudeOutline } from '../../../lib/outline'
+import { roomWorldPos } from '../../../lib/roomPos'
 
 type Drill = CampusState['drill']
 
@@ -28,11 +29,12 @@ export function DrillSlabs({
 
   const hasOutline = !!b.outline?.length
   // v4：轮廓楼剖层 = 真实平面薄板（底面 y=0）；盒体楼 = 中心几何盒
+  // 板厚 0.92×层高：展开过渡瞬间相邻板面不共面，消除 z-fighting 频闪
   const slabGeo = useMemo(
     () =>
       hasOutline
-        ? extrudeOutline(b.outline!, b.position[0], b.position[1], b.floorHeight)
-        : new THREE.BoxGeometry(b.footprint[0], b.floorHeight, b.footprint[1]),
+        ? extrudeOutline(b.outline!, b.position[0], b.position[1], b.floorHeight * 0.92)
+        : new THREE.BoxGeometry(b.footprint[0], b.floorHeight * 0.92, b.footprint[1]),
     [hasOutline, b.outline, b.position, b.footprint, b.floorHeight],
   )
   const slabEdges = useMemo(() => new THREE.EdgesGeometry(slabGeo), [slabGeo])
@@ -46,11 +48,12 @@ export function DrillSlabs({
   )
 
   const room = drill.roomId ? rooms.find((r) => r.id === drill.roomId) : undefined
-  const roomLocalX = useMemo(() => {
-    if (!room) return 0
-    const seq = Number(room.name.slice(-2)) || 1
-    return (((seq - 1) % 4) - 1.5) / 3 * b.footprint[0] * 0.6
-  }, [room, b.footprint])
+  // v4：房间内点来自 roomWorldPos（真实轮廓内的 2×4 槽位），转楼局部坐标
+  const roomLocal = useMemo(() => {
+    if (!room) return { x: 0, z: 0 }
+    const [wx, , wz] = roomWorldPos(b, room)
+    return { x: wx - b.position[0], z: wz - b.position[1] }
+  }, [room, b])
 
   useFrame((_, delta) => {
     const e = expand.current
@@ -68,9 +71,9 @@ export function DrillSlabs({
     if (rm && room) {
       rm.visible = lift.current > 0.02
       rm.position.set(
-        roomLocalX * (1 + 0.35 * lift.current),
+        roomLocal.x * (1 + 0.35 * lift.current),
         (room.floor - 1) * b.floorHeight * e + b.floorHeight / 2 + lift.current * b.floorHeight * 0.9,
-        0,
+        roomLocal.z * (1 + 0.35 * lift.current),
       )
     }
   })

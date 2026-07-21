@@ -37,20 +37,19 @@ export function BookingPanel() {
           const room = rooms.find((r) => r.id === roomId)
           if (!room) return null
           const booked = room.status === 'busy'
+          // 定位：剖层到 Lv3 房间浮出（与报修同一机制），镜头特写跟进
+          const locate = () => {
+            selectBuilding(room.buildingId)
+            setDrill({ level: 3, buildingId: room.buildingId, floor: room.floor, roomId: room.id })
+          }
           return (
             <div
               key={roomId}
               role="button"
               tabIndex={0}
-              onClick={() => {
-                selectBuilding(room.buildingId)
-                setDrill({ level: 3, buildingId: room.buildingId, floor: room.floor, roomId: room.id })
-              }}
+              onClick={locate}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
-                  selectBuilding(room.buildingId)
-                  setDrill({ level: 3, buildingId: room.buildingId, floor: room.floor, roomId: room.id })
-                }
+                if (e.key === 'Enter') locate()
               }}
               className="cursor-pointer rounded-lg border border-slate-200 bg-white p-3 transition-colors hover:border-brand/50"
             >
@@ -75,28 +74,42 @@ export function BookingPanel() {
                   <MapPin size={11} />
                   距正门{walkMin !== null ? walkText(walkMin) : '路径未知'}
                 </span>
-                <button
-                  type="button"
-                  disabled={booked}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    confirmBooking(roomId)
-                  }}
-                  className={
-                    booked
-                      ? 'flex items-center gap-1 rounded-md bg-slate-100 px-2.5 py-1 text-[11px] text-slate-400'
-                      : 'rounded-md bg-brand px-2.5 py-1 text-[11px] font-medium text-white hover:bg-brand-dark'
-                  }
-                >
-                  {booked ? (
-                    <>
-                      <Check size={11} />
-                      已预约
-                    </>
-                  ) : (
-                    '确认预约'
-                  )}
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    title="剖层定位到楼内房间"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      locate()
+                    }}
+                    className="flex items-center gap-1 rounded-md border border-slate-200 px-2 py-1 text-[11px] text-slate-500 hover:border-brand/50 hover:text-brand-dark"
+                  >
+                    <MapPin size={11} />
+                    定位
+                  </button>
+                  <button
+                    type="button"
+                    disabled={booked}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      confirmBooking(roomId)
+                    }}
+                    className={
+                      booked
+                        ? 'flex items-center gap-1 rounded-md bg-slate-100 px-2.5 py-1 text-[11px] text-slate-400'
+                        : 'rounded-md bg-brand px-2.5 py-1 text-[11px] font-medium text-white hover:bg-brand-dark'
+                    }
+                  >
+                    {booked ? (
+                      <>
+                        <Check size={11} />
+                        已预约
+                      </>
+                    ) : (
+                      '确认预约'
+                    )}
+                  </button>
+                </div>
               </div>
             </div>
           )

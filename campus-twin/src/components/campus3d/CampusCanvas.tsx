@@ -74,7 +74,8 @@ export function CampusCanvas() {
     <Canvas
       dpr={quality === 'low' ? 1 : [1, 1.75]}
       // 首屏唤醒：镜头从 1700m 高空俯冲至总览位（CameraDirector damp 接管，约 2s 落位）
-      camera={{ position: [worldCenter[0] + 900, 1100, worldCenter[1] + 900], fov: 42, near: 1, far: 7000 }}
+      // near=10：near/far 比收窄后深度精度提升 10 倍，根治近地面分层(路/水/网格)的 z-fighting 频闪
+      camera={{ position: [worldCenter[0] + 900, 1100, worldCenter[1] + 900], fov: 42, near: 10, far: 7000 }}
       gl={{ antialias: true }}
       onPointerMissed={() => {
         selectBuilding(undefined)

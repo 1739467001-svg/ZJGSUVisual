@@ -12,14 +12,15 @@ const MAT = (
 
 export function Water() {
   const lakeGeo = useMemo(() => {
-    const parts = world.water.filter((w) => w.kind === 'lake').map((w) => flatOutline(w.outline).translate(0, 0.05, 0))
+    // y=0.09：与路面(0.06)/网格(0.01~0.02)拉开分层，消除共面 z-fighting
+    const parts = world.water.filter((w) => w.kind === 'lake').map((w) => flatOutline(w.outline).translate(0, 0.09, 0))
     return parts.length ? mergeGeometries(parts, false) : null
   }, [])
 
   const riverGeo = useMemo(() => {
     const parts = world.water
       .filter((w) => w.kind === 'river')
-      .map((w) => ribbonGeometry(w.path, w.width, 0.05))
+      .map((w) => ribbonGeometry(w.path, w.width, 0.09))
     return parts.length ? mergeGeometries(parts, false) : null
   }, [])
 

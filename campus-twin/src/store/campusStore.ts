@@ -240,6 +240,8 @@ export const useCampusStore = create<CampusState>((set, get) => ({
       bookings: [...cur.bookings, booking],
       // 任务闭环：清掉候选高亮，该楼光带回落为 busy（沙盘可见状态联动）
       highlightedRoomIds: [],
+      // 预约确认即定位（效仿报修 Lv3 房间浮出）：剖层到该房间，镜头特写跟进
+      drill: { level: 3, buildingId: room.buildingId, floor: room.floor, roomId: room.id },
       rooms: cur.rooms.map((r) => (r.id === roomId ? { ...r, status: 'busy' as const } : r)),
       // 即时重算 snapshot（不等 ClockBridge 1Hz）：KPI/热力/标签即刻联动（规格 §5.1）
       snapshot: pulseAt(
